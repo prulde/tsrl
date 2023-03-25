@@ -1,6 +1,6 @@
 "use strict";
 (() => {
-  // src/ts/simple-roguelike-terminal/glyph.ts
+  // src/ts/termial/glyph.ts
   var Glyph = class {
     constructor(glyph, fcolor, bcolor, data, darkerGlyph) {
       this._glyph = glyph;
@@ -26,7 +26,7 @@
     }
   };
 
-  // src/ts/simple-roguelike-terminal/color.ts
+  // src/ts/termial/color.ts
   var _Color = class {
     static makeDarker(color, factor) {
       return new _Color(
@@ -74,7 +74,7 @@
   Color.pink = new _Color(255, 0, 127);
   Color.crimson = new _Color(255, 0, 63);
 
-  // src/ts/simple-roguelike-terminal/display.ts
+  // src/ts/termial/display.ts
   var Display = class {
     constructor(width, height, stepx, stepy, ctx) {
       this.glyphs = [];
@@ -97,7 +97,6 @@
       this.changedGlyphs[x + y * this.width] = glyph;
     }
     render() {
-      let count = 0;
       for (let x = 0; x < this.width; ++x) {
         for (let y = 0; y < this.height; ++y) {
           let glyph = this.changedGlyphs[x + y * this.width];
@@ -105,17 +104,15 @@
             continue;
           if (this.changedGlyphs[x + y * this.width] == this.glyphs[x + y * this.width])
             continue;
-          count++;
           this.ctx.putImageData(glyph.glyphData, x * this.stepx, y * this.stepy);
           this.glyphs[x + y * this.width] = glyph;
           this.changedGlyphs[x + y * this.width] = null;
         }
       }
-      count == 0 ? "" : console.log(`number of calls to putImageData(): ${count}`);
     }
   };
 
-  // src/ts/simple-roguelike-terminal/terminal.ts
+  // src/ts/termial/terminal.ts
   var Terminal = class {
     constructor(width, height, tilesetUrl, stepx, stepy) {
       this.tiles = [];
@@ -613,10 +610,13 @@
   var inputKey = InputKey.NO_INPUT;
   var screenWidth = 50;
   var screenHeight = 50;
+  var fpsBar = document.createElement("p");
+  document.querySelector("body").appendChild(fpsBar);
   var Game = class {
     constructor() {
       this.loop = (timestamp) => {
         let progress = timestamp - this.lastRender;
+        fpsBar.innerText = (1 / (progress / 1e3)).toFixed(4);
         this.update();
         this.lastRender = timestamp;
         window.requestAnimationFrame(this.loop);

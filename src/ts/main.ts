@@ -28,6 +28,8 @@ const InputKey = {
 let inputKey: string = InputKey.NO_INPUT;
 let screenWidth: number = 50;
 let screenHeight: number = 50;
+let fpsBar = document.createElement("p");
+document.querySelector("body")!.appendChild(fpsBar);
 
 // game state and loop
 class Game {
@@ -79,7 +81,7 @@ class Game {
 
 	private loop = (timestamp: number): void => {
 		let progress: number = timestamp - this.lastRender;
-
+		fpsBar.innerText = (1 / (progress / 1000)).toFixed(4);
 		//if (inputKey !== InputKey.NO_INPUT)
 		this.update();
 

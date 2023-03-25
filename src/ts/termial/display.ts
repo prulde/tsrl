@@ -30,13 +30,13 @@ export default class Display {
 	}
 
 	public render(): void {
-		let count: number = 0;
+		//let count: number = 0;
 		for (let x: number = 0; x < this.width; ++x) {
 			for (let y: number = 0; y < this.height; ++y) {
 				let glyph: Glyph | null = this.changedGlyphs[x + y * this.width];
 				if (glyph === null || glyph === undefined) continue;
 				if (this.changedGlyphs[x + y * this.width] == this.glyphs[x + y * this.width]) continue;
-				count++;
+				//count++;
 
 				this.ctx!.putImageData(glyph.glyphData, x * this.stepx, y * this.stepy);
 
@@ -44,6 +44,6 @@ export default class Display {
 				this.changedGlyphs[x + y * this.width] = null;
 			}
 		}
-		count == 0 ? "" : console.log(`number of calls to putImageData(): ${count}`);
+		//count == 0 ? "" : console.log(`number of calls to putImageData(): ${count}`);
 	}
 }

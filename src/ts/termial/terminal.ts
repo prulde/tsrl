@@ -1,4 +1,5 @@
-import { Glyph, Color } from "./glyph";
+import Glyph from "./glyph";
+import Color from "./color";
 import Display from "./display";
 
 export default class Terminal {
@@ -44,8 +45,8 @@ export default class Terminal {
 		this.tileset.onload = ((): void => this.tilesetLoaded());
 		this.tileset.src = tilesetUrl;
 
-		this.display = new Display(width, height);
-	};
+		this.display = new Display(width, height, stepx, stepy, this.ctx!);
+	}
 
 	private tilesetLoaded(): void {
 		console.log(`loaded: ${this.tileset.src}`);
@@ -55,15 +56,19 @@ export default class Terminal {
 			for (let j: number = 0; j < 16; ++j) {
 				this.tiles.push(this.ctx!.getImageData(j * this.stepx, i * this.stepy, this.stepx, this.stepy));
 			}
-		}
+		};
 
 		this.clear();
 
 		// trigger event
 		document.dispatchEvent(this.imgLoaded);
-	};
+	}
 
-	public defineGlyph(glyph: number, fcolor: Color, bcolor: Color, factor: number = 0.3): Glyph {
+	public defineGlyph(glyph: number | string, fcolor: Color, bcolor: Color, factor: number = 0.3): Glyph {
+		if (typeof glyph === "string") {
+			glyph = glyph.charCodeAt(0);
+		};
+
 		if (glyph < 0) throw new RangeError(`out of tileset bounds: ${glyph}<0`);//return null;
 		if (glyph >= 256) throw new RangeError(`out of tileset bounds: ${glyph}>=256`);//return null;
 
@@ -72,7 +77,7 @@ export default class Terminal {
 		let darkerFColor: Color = Color.makeDarker(fcolor, factor);
 		let darkerBColor: Color = Color.makeDarker(bcolor, factor);
 
-		let currentTile = 0;
+		let currentTile: number = 0;
 		this.tiles.forEach((tile: ImageData): void => {
 			if (currentTile != glyph) {
 				currentTile++;
@@ -106,24 +111,37 @@ export default class Terminal {
 						darkerImgData[index] = darkerBColor.r;
 						darkerImgData[index + 1] = darkerBColor.g;
 						darkerImgData[index + 2] = darkerBColor.b;
-					};
-				};
-			};
+					}
+				}
+			}
 		});
 
-		return new Glyph(glyph, fcolor, bcolor, glyphData, darkerGlyphData);
-	};
+		return new Glyph((glyph as number), fcolor, bcolor, glyphData, darkerGlyphData);
+	}
 
 	public clear(): void {
 		this.ctx!.fillStyle = "#000000";
 		this.ctx!.fillRect(0, 0, this.widthPixels, this.heightPixels);
-	};
+	}
 
 	public putChar(glyph: Glyph, x: number, y: number): void {
+		if (x < 0 || x > this.width) throw new RangeError(`x:${x} must be within range [0,${this.width}]`);
+		if (y < 0 || y > this.height) throw new RangeError(`y:${y} must be within range [0,${this.height}]`);
+
 		this.display.putChar(glyph, x, y);
-	};
+	}
+	/** @todo */
+	// public write(str: string, x: number, y: number, fcol: Color, bcol: Color) {
+	// 	if (x + str.length > this.width) throw new RangeError(`x+string.lenght:${y} must be less than ${this.height}]`);
+	// 	if (x < 0 || x >= this.width) throw new RangeError(`x:${x} must be within range [0,${this.width}]`);
+	// 	if (y < 0 || y >= this.height) throw new RangeError(`y:${y} must be within range [0,${this.height}]`);
+
+	// 	for (let i: number = 0; i < str.length; i++) {
+	// 		this.putChar(str.charAt(i), x + i, y);
+	// 	}
+	// };
 
 	public render(): void {
-		this.display.render(this.ctx!, this.stepx, this.stepy);
-	};
-};
+		this.display.render();
+	}
+}

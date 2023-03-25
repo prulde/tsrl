@@ -1,7 +1,7 @@
 {
 	"main": "index.js",
 	"scripts": {
-		"build": "esbuild src/ts/main.ts --bundle --outfile=index.js"
+		"build": "esbuild src/ts/main.ts --bundle  --outfile=index.js"
 	},
 	"devDependencies": {
 		"esbuild": "^0.17.12",

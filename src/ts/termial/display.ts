@@ -1,15 +1,24 @@
-import { Glyph } from "./glyph";
+import Glyph from "./glyph";
 
 export default class Display {
-	private width;
-	private height;
+	private width: number;
+	private height: number;
+
+	private stepx: number;
+	private stepy: number;
+
+	private ctx: CanvasRenderingContext2D;
+
 	private glyphs: Glyph[] = [];
 	private changedGlyphs: (Glyph | null)[] = [];
 
-	constructor(width: number, height: number) {
+	constructor(width: number, height: number, stepx: number, stepy: number, ctx: CanvasRenderingContext2D) {
 		this.width = width;
 		this.height = height;
-	};
+		this.stepx = stepx;
+		this.stepy = stepy;
+		this.ctx = ctx;
+	}
 
 	public putChar(glyph: Glyph, x: number, y: number): void {
 		if (x < 0) return;
@@ -18,9 +27,9 @@ export default class Display {
 		if (y >= this.height) return;
 
 		this.changedGlyphs[x + y * this.width] = glyph;
-	};
+	}
 
-	public render(ctx: CanvasRenderingContext2D, stepx: number, stepy: number): void {
+	public render(): void {
 		let count: number = 0;
 		for (let x: number = 0; x < this.width; ++x) {
 			for (let y: number = 0; y < this.height; ++y) {
@@ -29,12 +38,12 @@ export default class Display {
 				if (this.changedGlyphs[x + y * this.width] == this.glyphs[x + y * this.width]) continue;
 				count++;
 
-				ctx!.putImageData(glyph.data, x * stepx, y * stepy);
+				this.ctx!.putImageData(glyph.glyphData, x * this.stepx, y * this.stepy);
 
 				this.glyphs[x + y * this.width] = glyph;
 				this.changedGlyphs[x + y * this.width] = null;
-			};
-		};
-		console.log(`number of calls to putImageData(): ${count}`);
-	};
-};
+			}
+		}
+		count == 0 ? "" : console.log(`number of calls to putImageData(): ${count}`);
+	}
+}

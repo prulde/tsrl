@@ -1,31 +1,9 @@
-const chars: string[] = [
-	" ☺☻♥♦♣♠•◘○◙♂♀♪♫☼",  // 0
-	"►◄↕‼¶§▬↨↑↓→←∟↔▲▼",  // 1
-	" !\"#\$%&'()*+,-./",// 2
-	"0123456789:;<=>?",  // 3
-	"@ABCDEFGHIJKLMNO",  // 4
-	"PQRSTUVWXYZ[\\]^_", // 5
-	"`abcdefghijklmno",  // 6
-	"pqrstuvwxyz{|}~⌂",  // 7
-	"ÇüéâäàåçêëèïîìÄÅ",  // 8
-	"ÉæÆôöòûùÿÖÜ¢£¥₧ƒ",  // 9
-	"áíóúñÑªº¿⌐¬½¼¡«»",  // 10
-	"░▒▓│┤╡╢╖╕╣║╗╝╜╛┐",  // 11
-	"└┴┬├─┼╞╟╚╔╩╦╠═╬╧",  // 12
-	"╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀",  // 13
-	"αßΓπΣσµτΦΘΩδ∞φε∩",  // 14
-	"≡±≥≤⌠⌡÷≈°∙·√ⁿ²■"		 // 15
-];
-
-//let definedGlyphs: Glyph[] = [];
-//let darkerGlyphs: Glyph[] = [];
-
-class Color {
+export default class Color {
 	public static makeDarker(color: Color, factor: number): Color {
 		return new Color(Math.max(Math.floor(color.r * factor), 0),
 			Math.max(Math.floor(color.g * factor), 0),
 			Math.max(Math.floor(color.b * factor), 0));
-	};
+	}
 
 	public static readonly black = new Color(0, 0, 0);
 	//public static readonly gray = new Color(0, 0, 0);
@@ -68,32 +46,6 @@ class Color {
 		this.r = r;
 		this.g = g;
 		this.b = b;
-	};
+	}
 
-};
-
-class Glyph {
-	private readonly glyph: number;
-	private readonly fcolor: Color;
-	private readonly bcolor: Color;
-	private readonly glyphData: ImageData;
-	private readonly darkerGlyphData: ImageData;
-
-	constructor(glyph: number, fcolor: Color, bcolor: Color, data: ImageData, darkerGlyph: ImageData) {
-		this.glyph = glyph;
-		this.fcolor = fcolor;
-		this.bcolor = bcolor;
-		this.glyphData = data;
-		this.darkerGlyphData = darkerGlyph;
-	};
-
-	get data(): ImageData {
-		return this.glyphData;
-	};
-
-	get tinted(): ImageData {
-		return this.darkerGlyphData;
-	};
-};
-
-export { Glyph, Color };
+}

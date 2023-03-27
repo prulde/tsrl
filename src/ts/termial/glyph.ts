@@ -5,20 +5,19 @@ export default class Glyph {
 	private readonly _glyph: number;
 	private readonly _fcolor: Color;
 	private readonly _bcolor: Color;
-	private readonly _glyphData: ImageData;
-	private readonly _tintedGlyphData: ImageData;
 
-	constructor(glyph: number, fcolor: Color, bcolor: Color, data: ImageData, darkerGlyph: ImageData) {
+	constructor(glyph: number | string, fcolor: Color, bcolor: Color) {
+
+		/**@todo map glyphs to charmap  */
+
+		if (typeof glyph === "string") {
+			glyph = glyph.charCodeAt(0);
+		};
 		this._glyph = glyph;
 		this._fcolor = fcolor;
 		this._bcolor = bcolor;
-		this._glyphData = data;
-		this._tintedGlyphData = darkerGlyph;
 	}
 
-	get glyphData(): ImageData {
-		return this._glyphData;
-	}
 
 	get fcol(): Color {
 		return this._fcolor;
@@ -28,11 +27,8 @@ export default class Glyph {
 		return this._bcolor;
 	}
 
-	// get glyph(): number {
-	// 	return this._glyph;
-	// }
-
-	get tintedGlyphData(): ImageData {
-		return this._tintedGlyphData;
+	get char(): number {
+		return this._glyph;
 	}
+
 }

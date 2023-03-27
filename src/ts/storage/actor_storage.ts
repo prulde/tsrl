@@ -19,28 +19,23 @@ enum ActorType {
 }
 
 class ActorStorage {
-	private static definedTypes: StorageType[] = [];
-
-	public static defineActors() {
-		this.definedTypes = [
-			{
-				name: "you",
-				glyph: terminal.defineGlyph("@", Color.white, Color.black),
-				maxHp: 30,
-				attack: 10,
-				defense: 5,
-				isPlayer: true,
-			},
-			{
-				name: "dragon",
-				glyph: terminal.defineGlyph("D", Color.yellow, Color.black),
-				maxHp: 15,
-				attack: 5,
-				defense: 0,
-				isPlayer: false,
-			}
-		];
-	}
+	private static definedTypes: StorageType[] = [
+		{
+			name: "you",
+			glyph: new Glyph("@", Color.white, Color.black),
+			maxHp: 30,
+			attack: 10,
+			defense: 5,
+			isPlayer: true,
+		},
+		{
+			name: "dragon",
+			glyph: new Glyph("D", Color.yellow, Color.black),
+			maxHp: 15,
+			attack: 5,
+			defense: 0,
+			isPlayer: false,
+		}];
 
 	private static getBreed(type: ActorType): Breed | null {
 		for (let i: number = 0; i < this.definedTypes.length; ++i) {

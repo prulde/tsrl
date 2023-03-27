@@ -1,6 +1,6 @@
 import Glyph from "./glyph";
 import Color from "./color";
-import Display from "./display";
+import CharCode from "./charcode";
 
 export default class Terminal {
 	private width: number;
@@ -13,12 +13,12 @@ export default class Terminal {
 
 	private tileset: HTMLImageElement;
 
-	private tiles: ImageData[] = [];
-
 	private canvas: HTMLCanvasElement;
 	private ctx: CanvasRenderingContext2D | null;
+	private cachedFonts: Map<Color, HTMLCanvasElement> = new Map();
 
-	private display: Display;
+	private glyphs: Glyph[] = [];
+	private changedGlyphs: (Glyph | null)[] = [];
 
 	private imgLoaded: CustomEvent;
 
@@ -35,88 +35,58 @@ export default class Terminal {
 		this.canvas = document.createElement("canvas");
 		this.canvas.width = this.widthPixels;
 		this.canvas.height = this.heightPixels;
+		document.body.appendChild(this.canvas);
+
 		this.ctx = this.canvas.getContext("2d", { alpha: false, willReadFrequently: true });
 		this.ctx!.imageSmoothingEnabled = false;
-		document.body.appendChild(this.canvas);
 
 		this.imgLoaded = new CustomEvent("imgLoaded");
 
 		this.tileset = new Image();
 		this.tileset.onload = ((): void => this.tilesetLoaded());
 		this.tileset.src = tilesetUrl;
+	}
 
-		this.display = new Display(width, height, stepx, stepy, this.ctx!);
+	private makeColoredCanvas(fontColor: Color): HTMLCanvasElement {
+		let canvas: HTMLCanvasElement = document.createElement("canvas");
+		canvas.width = this.widthPixels;
+		canvas.height = this.heightPixels;
+		let ctx: CanvasRenderingContext2D | null = canvas.getContext("2d", { willReadFrequently: true });
+		ctx!.drawImage(this.tileset, 0, 0);
+
+		ctx!.globalCompositeOperation = "source-atop";
+		ctx!.fillStyle = "rgb(" + fontColor.r + ", " + fontColor.g + ", " + fontColor.b + ")";
+		ctx!.fillRect(0, 0, this.stepx * 16, this.stepy * 16);
+
+		return canvas;
 	}
 
 	private tilesetLoaded(): void {
 		console.log(`loaded: ${this.tileset.src}`);
 
-		this.ctx!.drawImage(this.tileset, 0, 0);
-		for (let i: number = 0; i < 16; ++i) {
-			for (let j: number = 0; j < 16; ++j) {
-				this.tiles.push(this.ctx!.getImageData(j * this.stepx, i * this.stepy, this.stepx, this.stepy));
-			}
-		};
+		// initialize cached colors
+		Color.colors.forEach((color: Color): void => {
+			this.cachedFonts.set(color, this.makeColoredCanvas(color));
+		});
 
-		this.clear();
+		//this.ctx!.drawImage(this.tileset, 0, 0);
+
+		// for (let i: number = 0; i < 16; ++i) {
+		// 	for (let j: number = 0; j < 16; ++j) {
+		// 		this.ctx!.fillStyle = "rgb(" + i + 5 + ", " + j + 5 + ", " + i + 5 + ")";
+		// 		this.ctx!.fillRect(i * this.stepx, j * this.stepy, this.stepx, this.stepy);
+
+		// 		let fillColor: string = "rgb(" + Color.green.r + ", " + Color.green.g + ", " + Color.green.b + ")";
+		// 		let color: HTMLCanvasElement = this.makeColoredCanvas(fillColor);
+
+		// 		this.ctx!.drawImage(color, i * this.stepx, j * this.stepy, this.stepx, this.stepy, i * this.stepx, j * this.stepx, this.stepx, this.stepy);
+		// 	}
+		// };
+
+		//this.clear();
 
 		// trigger event
 		document.dispatchEvent(this.imgLoaded);
-	}
-
-	public defineGlyph(glyph: number | string, fcolor: Color, bcolor: Color, factor: number = 0.3): Glyph {
-		if (typeof glyph === "string") {
-			glyph = glyph.charCodeAt(0);
-		};
-
-		if (glyph < 0) throw new RangeError(`out of tileset bounds: ${glyph}<0`);//return null;
-		if (glyph >= 256) throw new RangeError(`out of tileset bounds: ${glyph}>=256`);//return null;
-
-		let glyphData!: ImageData;
-		let darkerGlyphData!: ImageData;
-		let darkerFColor: Color = Color.makeDarker(fcolor, factor);
-		let darkerBColor: Color = Color.makeDarker(bcolor, factor);
-
-		let currentTile: number = 0;
-		this.tiles.forEach((tile: ImageData): void => {
-			if (currentTile != glyph) {
-				currentTile++;
-				return;
-			}
-
-			currentTile++;
-
-			glyphData = structuredClone(tile);
-			darkerGlyphData = structuredClone(tile);
-			let imgData: Uint8ClampedArray = glyphData.data;
-			let darkerImgData: Uint8ClampedArray = darkerGlyphData.data;
-
-			for (let y: number = 0; y < this.stepx; ++y) {
-				for (let x: number = 0; x < this.stepy; ++x) {
-					let index: number = (x + this.stepx * y) * 4;
-					if (imgData[index] === 255 && imgData[index + 1] === 255 && imgData[index + 2] === 255) {
-						imgData[index] = fcolor.r;
-						imgData[index + 1] = fcolor.g;
-						imgData[index + 2] = fcolor.b;
-
-						darkerImgData[index] = darkerFColor.r;
-						darkerImgData[index + 1] = darkerFColor.g;
-						darkerImgData[index + 2] = darkerFColor.b;
-					} else if (imgData[index] === 0 && imgData[index + 1] === 0 && imgData[index + 2] === 0) {
-						imgData[index] = bcolor.r;
-						imgData[index + 1] = bcolor.g;
-						imgData[index + 2] = bcolor.b;
-
-						// stays 0 for black color
-						darkerImgData[index] = darkerBColor.r;
-						darkerImgData[index + 1] = darkerBColor.g;
-						darkerImgData[index + 2] = darkerBColor.b;
-					}
-				}
-			}
-		});
-
-		return new Glyph((glyph as number), fcolor, bcolor, glyphData, darkerGlyphData);
 	}
 
 	public clear(): void {
@@ -128,8 +98,9 @@ export default class Terminal {
 		if (x < 0 || x > this.width) throw new RangeError(`x:${x} must be within range [0,${this.width}]`);
 		if (y < 0 || y > this.height) throw new RangeError(`y:${y} must be within range [0,${this.height}]`);
 
-		this.display.putChar(glyph, x, y);
+		this.changedGlyphs[x + y * this.width] = glyph;
 	}
+
 	/** @todo */
 	// public write(str: string, x: number, y: number, fcol: Color, bcol: Color) {
 	// 	if (x + str.length > this.width) throw new RangeError(`x+string.lenght:${y} must be less than ${this.height}]`);
@@ -142,6 +113,33 @@ export default class Terminal {
 	// };
 
 	public render(): void {
-		this.display.render();
+		//let count: number = 0;
+		for (let x: number = 0; x < this.width; ++x) {
+			for (let y: number = 0; y < this.height; ++y) {
+				let glyph: Glyph | null = this.changedGlyphs[x + y * this.width];
+				if (glyph === null || glyph === undefined) continue;
+				if (this.changedGlyphs[x + y * this.width] == this.glyphs[x + y * this.width]) continue;
+				//count++;
+
+				let char: number = glyph.char;
+				let sx: number = Math.floor(char % 16) * this.stepx;
+				let sy: number = Math.floor(char / 16) * this.stepy;
+
+				this.ctx!.fillStyle = "rgb(" + glyph.bcol.r + ", " + glyph.bcol.g + ", " + glyph.bcol.b + ")";
+				this.ctx!.fillRect(x * this.stepx, y * this.stepy, this.stepx, this.stepy);
+
+				let color: HTMLCanvasElement | undefined = this.cachedFonts.get(glyph.fcol);
+				if (color === undefined) {
+					throw new TypeError(`${glyph.fcol} is undefined`);
+				}
+
+				//tilesetx,tilesety, stepx,stepy, destinationx,destinationy,scalex,scaley
+				this.ctx!.drawImage(color!, sx, sy, this.stepx, this.stepy, x * this.stepx, y * this.stepy, this.stepx, this.stepy);
+
+				this.glyphs[x + y * this.width] = glyph;
+				this.changedGlyphs[x + y * this.width] = null;
+			}
+		}
+		//count == 0 ? "" : console.log(`number of calls to drawImage(): ${count}`);
 	}
 }

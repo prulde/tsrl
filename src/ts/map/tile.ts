@@ -3,20 +3,12 @@ import Color from "../termial/color";
 import Glyph from "../termial/glyph";
 
 export default class Tile {
-	static GRASS: Tile;
-	static WALL: Tile;
-	static BOUND: Tile;
+	static GRASS: Tile = new Tile(new Glyph(".", Color.green, Color.black), false);;
+	static WALL: Tile = new Tile(new Glyph("#", Color.grey, Color.black), true);;
+	static BOUND: Tile = new Tile(new Glyph("X", Color.red, Color.black), true);;
 
 	private readonly _glyph: Glyph;
 	private readonly _blocks: boolean;
-
-	// sync image src load
-	static defineTiles(): void {
-		this.GRASS = new Tile(terminal.defineGlyph(".", Color.green, Color.black), false);
-		this.WALL = new Tile(terminal.defineGlyph("#", Color.grey, Color.black), true);
-		this.BOUND = new Tile(terminal.defineGlyph("X", Color.red, Color.black), true);
-		console.log("tiles defined");
-	}
 
 	constructor(glyph: Glyph, blocks: boolean) {
 		this._glyph = glyph;

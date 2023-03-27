@@ -5,7 +5,9 @@ export default class Color {
 			Math.max(Math.floor(color.b * factor), 0));
 	}
 
-	public static readonly black = new Color(0, 0, 0);
+	public static colors: Color[] = [];
+
+	public static readonly black: Color = new Color(0, 0, 0);
 	//public static readonly gray = new Color(0, 0, 0);
 	public static readonly darkestGrey: Color = new Color(31, 31, 31);
 	public static readonly darkerGrey: Color = new Color(63, 63, 63);
@@ -42,10 +44,11 @@ export default class Color {
 	readonly g: number;
 	readonly b: number;
 
-	constructor(r: number, g: number, b: number) {
+	private constructor(r: number, g: number, b: number) {
 		this.r = r;
 		this.g = g;
 		this.b = b;
+		Color.colors.push(this);
 	}
 
 }

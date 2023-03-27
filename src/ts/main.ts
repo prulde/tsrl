@@ -28,8 +28,8 @@ const InputKey = {
 let inputKey: string = InputKey.NO_INPUT;
 let screenWidth: number = 50;
 let screenHeight: number = 50;
-let fpsBar = document.createElement("p");
-document.querySelector("body")!.appendChild(fpsBar);
+// let fpsBar = document.createElement("p");
+// document.querySelector("body")!.appendChild(fpsBar);
 
 // game state and loop
 class Game {
@@ -81,7 +81,7 @@ class Game {
 
 	private loop = (timestamp: number): void => {
 		let progress: number = timestamp - this.lastRender;
-		fpsBar.innerText = (1 / (progress / 1000)).toFixed(4);
+		//fpsBar.innerText = (1 / (progress / 1000)).toFixed(4);
 		//if (inputKey !== InputKey.NO_INPUT)
 		this.update();
 
@@ -98,8 +98,6 @@ document.addEventListener("imgLoaded", initGame.bind(this));
 // sync image src load
 function initGame(e: CustomEventInit): void {
 	console.log("imgLoaded event");
-	Tile.defineTiles();
-	ActorStorage.defineActors();
 
 	game = new Game();
 

@@ -48,6 +48,7 @@ class Game {
 		this.currentScreen = new PlayScreen(screenWidth, screenHeight);
 
 		this.currentMap.addActor(this.player);
+		this.currentMap.computeFov(this.player.x, this.player.y);
 
 		console.log("Game constructor");
 
@@ -67,6 +68,7 @@ class Game {
 
 			}
 			if (result.moved) {
+				this.currentMap.computeFov(this.player.x, this.player.y);
 				//this.currentScreen.moveCamera(this.player.x, this.player.y);
 			}
 			if (result.performed) {

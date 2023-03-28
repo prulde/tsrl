@@ -122,8 +122,8 @@ export default class Terminal {
 				//count++;
 
 				let char: number = glyph.char;
-				let sx: number = Math.floor(char % 16) * this.stepx;
-				let sy: number = Math.floor(char / 16) * this.stepy;
+				let sx: number = Math.floor(char % this.stepx) * this.stepx;
+				let sy: number = Math.floor(char / this.stepx) * this.stepy;
 
 				this.ctx!.fillStyle = "rgb(" + glyph.bcol.r + ", " + glyph.bcol.g + ", " + glyph.bcol.b + ")";
 				this.ctx!.fillRect(x * this.stepx, y * this.stepy, this.stepx, this.stepy);

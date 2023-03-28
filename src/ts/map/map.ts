@@ -1,6 +1,7 @@
 import Actor from "../actor/actor";
 import Color from "../termial/color";
 import Glyph from "../termial/glyph";
+import Fov from "./fov";
 import Tile from "./tile";
 
 export default class GameMap {
@@ -9,12 +10,14 @@ export default class GameMap {
 	private _tiles: Tile[] = [];
 	private _actors: Actor[] = [];
 	private _corpses: Actor[] = [];
+	private fov: Fov;
 
 	constructor(width: number, height: number, tiles: Tile[], actors: Actor[]) {
 		this._width = width;
 		this._height = height;
 		this._tiles = tiles;
 		this._actors = actors;
+		this.fov = new Fov(width, height, this);
 	}
 
 	public isInsideMap(x: number, y: number): boolean {
@@ -36,6 +39,24 @@ export default class GameMap {
 				return;
 			}
 		}
+	}
+
+	public computeFov(x: number, y: number): void {
+		this.fov.computeFov(x, y);
+	}
+
+	public isInFov(x: number, y: number): boolean {
+		if (!this.isInsideMap(x, y)) {
+			return false;
+		}
+		return this.fov.isInFov(x, y);
+	}
+
+	public isExplored(x: number, y: number): boolean {
+		if (!this.isInsideMap(x, y)) {
+			return false;
+		}
+		return this.fov.isExplored(x, y);
 	}
 
 	public isWall(x: number, y: number): boolean {

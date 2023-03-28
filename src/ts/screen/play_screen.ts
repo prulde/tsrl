@@ -1,6 +1,7 @@
 import { Action, WalkAction, RestAction } from "../action/action";
 import Actor from "../actor/actor";
 import { InputKey, game, terminal } from "../main";
+import Tile from "../map/tile";
 import Camera from "./camera";
 import GameScreen from "./screen";
 
@@ -27,7 +28,16 @@ export default class PlayScreen implements GameScreen {
 				let x: number = this.camera.getCamerax() + i;
 				let y: number = this.camera.getCameray() + j;
 
-				terminal.putChar(game.currentMap.getChar(x, y), i, j);
+				if (game.currentMap.isInFov(x, y)) {
+					terminal.putChar(game.currentMap.getChar(x, y), i, j);
+				}
+				else if (game.currentMap.isExplored(x, y)) {
+					terminal.putChar(Tile.FOG.glyph, i, j);
+				}
+				// because i dont use clear() for render
+				else {
+					terminal.putChar(Tile.FOG.glyph, i, j);
+				}
 			}
 		}
 	}
@@ -39,11 +49,15 @@ export default class PlayScreen implements GameScreen {
 	private drawActors(): void {
 		const mapActors: Actor[] = game.currentMap.actors;
 		for (const actor of mapActors) {
-			const point = this.camera.toCameraCoordinates(actor.x, actor.y);
-			if (point.inBounds) {
-
-				terminal.putChar(actor.glyph, point._x, point._y,);
+			if (game.currentMap.isInFov(actor.x, actor.y)) {
+				const point = this.camera.toCameraCoordinates(actor.x, actor.y);
+				if (point.inBounds) {
+					terminal.putChar(actor.glyph, point._x, point._y);
+				} else {
+					terminal.putChar(Tile.FOG.glyph, point._x, point._y);
+				}
 			}
+
 		}
 	}
 

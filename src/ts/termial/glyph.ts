@@ -18,7 +18,6 @@ export default class Glyph {
 		this._bcolor = bcolor;
 	}
 
-
 	get fcol(): Color {
 		return this._fcolor;
 	}

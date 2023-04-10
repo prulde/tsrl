@@ -38,7 +38,7 @@ export default class Camera {
 		let newx: number = x - this.camerax;
 		let newy: number = y - this.cameray;
 
-		if (newx < 1 || newy < 1 || newx >= this.width + 1 || newy >= this.height + 1)
+		if (newx < 0 || newy < 0 || newx >= this.width || newy >= this.height)
 			return { _x: x, _y: y, inBounds: false };
 
 		x = newx;
@@ -47,12 +47,14 @@ export default class Camera {
 	}
 
 	isInsideViewport(x: number, y: number): boolean {
+		///???????
 		if (x < 1 || y < 1 || x >= this.width + 1 || y >= this.height + 1)
 			return false;
 		return true;
 	}
 
 	getGlobalCoordinates(x: number, y: number) {
+		///???????
 		if (x < 1 || y < 1 || x >= this.width + 1 || y >= this.height + 1)
 			return { x: x, y: y, inBounds: false };
 

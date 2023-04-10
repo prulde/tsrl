@@ -30,6 +30,14 @@ class WalkAction implements Action {
 	}
 
 	perform(owner: Actor): ActionResult {
+
+		/* debug */
+		if (game.noCollision) {
+			owner.x += this.x;
+			owner.y += this.y;
+			return new ActionResult(true, true, null, null);
+		}
+
 		let targetx: number = this.x + owner.x;
 		let targety: number = this.y + owner.y;
 

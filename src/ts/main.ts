@@ -26,12 +26,12 @@ const InputKey = {
 };
 
 let inputKey: string = InputKey.NO_INPUT;
-let screenWidth: number = 50;
-let screenHeight: number = 50;
+let screenWidth: number = 100;
+let screenHeight: number = 100;
 // let fpsBar = document.createElement("p");
 // document.querySelector("body")!.appendChild(fpsBar);
 
-// game state and loop
+/** game state and loop */
 class Game {
 	public sightRadius: number;
 	public currentMap: GameMap;
@@ -39,20 +39,22 @@ class Game {
 	public currentScreen: GameScreen;
 	private lastRender: number;
 
+	/** debug */
+	public noFov: boolean = true;
+	public noCollision: boolean = true;
+
 	constructor() {
 		this.sightRadius = 8;
 		this.lastRender = 0;
 
-		this.currentMap = new MapBuilder(150, 150, 1).makeMap();
+		this.currentMap = new MapBuilder(100, 100, 1).makeMap();
 		this.player = ActorStorage.makeActor(25, 25, ActorType.player, null);
 		this.currentScreen = new PlayScreen(screenWidth, screenHeight);
 
 		this.currentMap.addActor(this.player);
 		this.currentMap.computeFov(this.player.x, this.player.y);
 
-		console.log("Game constructor");
-
-		// start game loop
+		/** start game loop */
 		window.requestAnimationFrame(this.loop);
 	}
 
@@ -92,14 +94,13 @@ class Game {
 	};
 }
 
-let terminal: Terminal = new Terminal(screenWidth, screenHeight, "data/cp437_16x16.png", 16, 16);
+let terminal: Terminal = new Terminal(screenWidth, screenHeight, "data/cp437_16x16_test.png", 16, 16);
 let game: Game;
 
 document.addEventListener("imgLoaded", initGame.bind(this));
 
-// sync image src load
+/** sync image src load */
 function initGame(e: CustomEventInit): void {
-	console.log("imgLoaded event");
 
 	game = new Game();
 

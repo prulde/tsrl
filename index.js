@@ -2,6 +2,11 @@
 (() => {
   // src/ts/termial/color.ts
   var _Color = class {
+    /** 
+     * @param color - initial color
+     * @param factor - float number
+     * @returns a new Color that is darker than the initial color
+     */
     static makeDarker(color, factor) {
       return new _Color(
         Math.max(Math.floor(color.r * factor), 0),
@@ -17,6 +22,9 @@
     }
   };
   var Color = _Color;
+  /**
+   * list of all colors, including user-defined
+   */
   Color.colors = [];
   Color.black = new _Color(0, 0, 0);
   //public static readonly gray = new Color(0, 0, 0);
@@ -85,16 +93,19 @@
       return canvas;
     }
     tilesetLoaded() {
-      console.log(`loaded: ${this.tileset.src}`);
       Color.colors.forEach((color) => {
         this.cachedFonts.set(color, this.makeColoredCanvas(color));
       });
       document.dispatchEvent(this.imgLoaded);
     }
+    /** fills the terminal with black color */
     clear() {
       this.ctx.fillStyle = "#000000";
       this.ctx.fillRect(0, 0, this.widthPixels, this.heightPixels);
     }
+    /**
+     * Writes one glyph to [x, y]
+     */
     putChar(glyph, x, y) {
       if (x < 0 || x > this.width)
         throw new RangeError(`x:${x} must be within range [0,${this.width}]`);
@@ -111,6 +122,7 @@
     // 		this.putChar(str.charAt(i), x + i, y);
     // 	}
     // };
+    /** Renders only modified glyphs since the last call. */
     render() {
       for (let x = 0; x < this.width; ++x) {
         for (let y = 0; y < this.height; ++y) {
@@ -151,6 +163,11 @@
       this.y = y;
     }
     perform(owner) {
+      if (game.noCollision) {
+        owner.x += this.x;
+        owner.y += this.y;
+        return new ActionResult(true, true, null, null);
+      }
       let targetx = this.x + owner.x;
       let targety = this.y + owner.y;
       if (game.currentMap.isWall(targetx, targety)) {
@@ -215,7 +232,11 @@
   Tile.GRASS = new _Tile(new Glyph(".", Color.green, Color.black), false);
   Tile.WALL = new _Tile(new Glyph("#", Color.grey, Color.black), true);
   Tile.BOUND = new _Tile(new Glyph("X", Color.red, Color.black), true);
-  Tile.FOG = new _Tile(new Glyph("_", Color.black, Color.black), false);
+  Tile.FLOOR = new _Tile(new Glyph(".", Color.grey, Color.black), false);
+  Tile.DOOR = new _Tile(new Glyph("+", Color.amber, Color.black), false);
+  Tile.OPEN_DOOR = new _Tile(new Glyph("/", Color.amber, Color.black), false);
+  Tile.TEST_DOOR = new _Tile(new Glyph("#", Color.amber, Color.black), true);
+  Tile.TEST_FLOOR = new _Tile(new Glyph("#", Color.darkestGrey, Color.black), false);
 
   // src/ts/screen/camera.ts
   var Camera = class {
@@ -245,7 +266,7 @@
     toCameraCoordinates(x, y) {
       let newx = x - this.camerax;
       let newy = y - this.cameray;
-      if (newx < 1 || newy < 1 || newx >= this.width + 1 || newy >= this.height + 1)
+      if (newx < 0 || newy < 0 || newx >= this.width || newy >= this.height)
         return { _x: x, _y: y, inBounds: false };
       x = newx;
       y = newy;
@@ -294,6 +315,10 @@
         for (let j = 0; j < this.camera.getHeight(); ++j) {
           let x = this.camera.getCamerax() + i;
           let y = this.camera.getCameray() + j;
+          if (game.noFov) {
+            terminal.putChar(game.currentMap.getChar(x, y), i, j);
+            continue;
+          }
           if (game.currentMap.isInFov(x, y)) {
             terminal.putChar(game.currentMap.getChar(x, y), i, j);
           } else if (game.currentMap.isExplored(x, y)) {
@@ -309,8 +334,12 @@
     drawActors() {
       const mapActors = game.currentMap.actors;
       for (const actor of mapActors) {
+        const point = this.camera.toCameraCoordinates(actor.x, actor.y);
+        if (game.noFov && point.inBounds) {
+          terminal.putChar(actor.glyph, point._x, point._y);
+          continue;
+        }
         if (game.currentMap.isInFov(actor.x, actor.y)) {
-          const point = this.camera.toCameraCoordinates(actor.x, actor.y);
           if (point.inBounds) {
             terminal.putChar(actor.glyph, point._x, point._y);
           } else {
@@ -639,6 +668,48 @@
     }
   };
 
+  // src/ts/map/generation/features.ts
+  var _Direction = class {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+    }
+  };
+  var Direction = _Direction;
+  Direction.north = new _Direction(0, -1);
+  Direction.south = new _Direction(0, 1);
+  Direction.west = new _Direction(-1, 0);
+  Direction.east = new _Direction(1, 0);
+  Direction.none = new _Direction(0, 0);
+  Direction.cardinal = [_Direction.north, _Direction.south, _Direction.west, _Direction.east];
+  var FeatureBuilder = class {
+    constructor(width, height, tiles, depth) {
+      this.tiles = [];
+      /** general number of rooms */
+      this.rooms = [];
+      /** rooms with unused exits */
+      this.roomsWithExits = [];
+      this.numTries = 1e3;
+      this.placeRoomAttempts = 20;
+      this.squareRoomChance = 0.2;
+      this.maxTunnelLength = 12;
+      this.width = width;
+      this.height = height;
+      this.tiles = tiles;
+      this.depth = depth;
+    }
+    generate() {
+      this.initWithTiles(Tile.TEST_FLOOR);
+    }
+    initWithTiles(tile) {
+      for (let i = 0; i < this.width; i++) {
+        for (let j = 0; j < this.height; j++) {
+          this.tiles[i + j * this.width] = tile;
+        }
+      }
+    }
+  };
+
   // src/ts/map/map_builder.ts
   var MapBuilder = class {
     constructor(width, height, depth) {
@@ -648,6 +719,11 @@
       this.height = height;
       this.tiles = new Array(width * height);
       this.depth = depth;
+    }
+    makeMap() {
+      let tileMap = new FeatureBuilder(this.width, this.height, this.tiles, this.depth);
+      tileMap.generate();
+      return new GameMap(this.width, this.height, this.tiles, this.actors);
     }
     addActors(amount) {
       for (let i = 0; i < amount; ++i) {
@@ -660,13 +736,19 @@
         this.actors.push(ActorStorage.makeActor(x, y, 1 /* dragon */, null));
       }
     }
+    initWithTiles(tile) {
+      for (let i = 0; i < this.width; i++) {
+        for (let j = 0; j < this.height; j++) {
+          this.tiles[i + j * this.width] = tile;
+        }
+      }
+    }
     populate(precision, populateWith) {
       for (let i = 0; i < this.width; i++) {
         for (let j = 0; j < this.height; j++) {
           this.tiles[i + j * this.width] = Math.random() < precision ? populateWith : Tile.GRASS;
         }
       }
-      console.log("map populated");
     }
     addBoundaries() {
       for (let i = 0; i < this.width; i++) {
@@ -676,12 +758,6 @@
           }
         }
       }
-    }
-    makeMap() {
-      this.populate(0.05, Tile.WALL);
-      this.addActors(25);
-      this.addBoundaries();
-      return new GameMap(this.width, this.height, this.tiles, this.actors);
     }
   };
 
@@ -700,10 +776,13 @@
     PICKUP: "pickup"
   };
   var inputKey = InputKey.NO_INPUT;
-  var screenWidth = 50;
-  var screenHeight = 50;
+  var screenWidth = 100;
+  var screenHeight = 100;
   var Game = class {
     constructor() {
+      /** debug */
+      this.noFov = true;
+      this.noCollision = true;
       this.loop = (timestamp) => {
         let progress = timestamp - this.lastRender;
         this.update();
@@ -712,12 +791,11 @@
       };
       this.sightRadius = 8;
       this.lastRender = 0;
-      this.currentMap = new MapBuilder(150, 150, 1).makeMap();
+      this.currentMap = new MapBuilder(100, 100, 1).makeMap();
       this.player = ActorStorage.makeActor(25, 25, 0 /* player */, null);
       this.currentScreen = new PlayScreen(screenWidth, screenHeight);
       this.currentMap.addActor(this.player);
       this.currentMap.computeFov(this.player.x, this.player.y);
-      console.log("Game constructor");
       window.requestAnimationFrame(this.loop);
     }
     update() {
@@ -740,11 +818,10 @@
       this.currentScreen.render(this.player.x, this.player.y);
     }
   };
-  var terminal = new Terminal(screenWidth, screenHeight, "data/cp437_16x16.png", 16, 16);
+  var terminal = new Terminal(screenWidth, screenHeight, "data/cp437_16x16_test.png", 16, 16);
   var game;
   document.addEventListener("imgLoaded", initGame.bind(void 0));
   function initGame(e) {
-    console.log("imgLoaded event");
     game = new Game();
     document.removeEventListener("imgLoaded", initGame);
     document.addEventListener("keydown", kbInput, false);

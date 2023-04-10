@@ -1,10 +1,17 @@
 export default class Color {
+	/** 
+	 * @param color - initial color
+	 * @param factor - float number
+	 * @returns a new Color that is darker than the initial color
+	 */
 	public static makeDarker(color: Color, factor: number): Color {
 		return new Color(Math.max(Math.floor(color.r * factor), 0),
 			Math.max(Math.floor(color.g * factor), 0),
 			Math.max(Math.floor(color.b * factor), 0));
 	}
-
+	/**
+	 * list of all colors, including user-defined
+	 */
 	public static colors: Color[] = [];
 
 	public static readonly black: Color = new Color(0, 0, 0);

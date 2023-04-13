@@ -31,7 +31,7 @@ let screenHeight: number = 100;
 // let fpsBar = document.createElement("p");
 // document.querySelector("body")!.appendChild(fpsBar);
 
-/** game state and loop */
+// game state and loop 
 class Game {
 	public sightRadius: number;
 	public currentMap: GameMap;
@@ -39,7 +39,7 @@ class Game {
 	public currentScreen: GameScreen;
 	private lastRender: number;
 
-	/** debug */
+	// debug 
 	public noFov: boolean = true;
 	public noCollision: boolean = true;
 
@@ -54,7 +54,7 @@ class Game {
 		this.currentMap.addActor(this.player);
 		this.currentMap.computeFov(this.player.x, this.player.y);
 
-		/** start game loop */
+		// start game loop 
 		window.requestAnimationFrame(this.loop);
 	}
 
@@ -99,7 +99,7 @@ let game: Game;
 
 document.addEventListener("imgLoaded", initGame.bind(this));
 
-/** sync image src load */
+// sync image src load 
 function initGame(e: CustomEventInit): void {
 
 	game = new Game();

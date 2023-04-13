@@ -21,8 +21,8 @@ export default class Color {
 	public static readonly darkGrey: Color = new Color(95, 95, 95);
 	public static readonly grey: Color = new Color(127, 127, 127);
 	public static readonly lightGrey: Color = new Color(159, 159, 159);
-	public static readonly lighterGre: Color = new Color(191, 191, 191);
-	public static readonly lightestGr: Color = new Color(223, 223, 223);
+	public static readonly lighterGrey: Color = new Color(191, 191, 191);
+	public static readonly lightestGrey: Color = new Color(223, 223, 223);
 	public static readonly white: Color = new Color(255, 255, 255);
 
 	public static readonly red: Color = new Color(255, 0, 0);
@@ -51,7 +51,7 @@ export default class Color {
 	readonly g: number;
 	readonly b: number;
 
-	private constructor(r: number, g: number, b: number) {
+	constructor(r: number, g: number, b: number) {
 		this.r = r;
 		this.g = g;
 		this.b = b;

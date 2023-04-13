@@ -33,8 +33,8 @@
   Color.darkGrey = new _Color(95, 95, 95);
   Color.grey = new _Color(127, 127, 127);
   Color.lightGrey = new _Color(159, 159, 159);
-  Color.lighterGre = new _Color(191, 191, 191);
-  Color.lightestGr = new _Color(223, 223, 223);
+  Color.lighterGrey = new _Color(191, 191, 191);
+  Color.lightestGrey = new _Color(223, 223, 223);
   Color.white = new _Color(255, 255, 255);
   Color.red = new _Color(255, 0, 0);
   Color.flame = new _Color(255, 63, 0);
@@ -231,11 +231,14 @@
   var Tile = _Tile;
   Tile.GRASS = new _Tile(new Glyph(".", Color.green, Color.black), false);
   Tile.WALL = new _Tile(new Glyph("#", Color.grey, Color.black), true);
+  // dont delete
+  Tile.FOG = new _Tile(new Glyph("#", Color.black, Color.black), false);
   Tile.BOUND = new _Tile(new Glyph("X", Color.red, Color.black), true);
   Tile.FLOOR = new _Tile(new Glyph(".", Color.grey, Color.black), false);
   Tile.DOOR = new _Tile(new Glyph("+", Color.amber, Color.black), false);
   Tile.OPEN_DOOR = new _Tile(new Glyph("/", Color.amber, Color.black), false);
-  Tile.TEST_DOOR = new _Tile(new Glyph("#", Color.amber, Color.black), true);
+  Tile.TEST_DOOR = new _Tile(new Glyph("#", new Color(150, 80, 0), Color.black), true);
+  Tile.TEST_WALL = new _Tile(new Glyph("#", new Color(0, 120, 0), Color.black), true);
   Tile.TEST_FLOOR = new _Tile(new Glyph("#", Color.darkestGrey, Color.black), false);
 
   // src/ts/screen/camera.ts
@@ -668,6 +671,19 @@
     }
   };
 
+  // src/ts/utils/rng.ts
+  var Rng = class {
+    static randomInt(max, min = 0) {
+      if (min == 0)
+        return Math.round(Math.random() * (max - 1));
+      else
+        return Math.round(Math.random() * (max - min + 1) + min);
+    }
+    static randomBoolean(probability = 0.5) {
+      return Math.random() > probability;
+    }
+  };
+
   // src/ts/map/generation/features.ts
   var _Direction = class {
     constructor(x, y) {
@@ -682,31 +698,325 @@
   Direction.east = new _Direction(1, 0);
   Direction.none = new _Direction(0, 0);
   Direction.cardinal = [_Direction.north, _Direction.south, _Direction.west, _Direction.east];
+  var _AreaType = class {
+  };
+  var AreaType = _AreaType;
+  AreaType.none = "none";
+  AreaType.room = "room";
+  AreaType.corridor = "corridor";
+  AreaType.types = [_AreaType.room, _AreaType.corridor];
+  var Mark = class {
+    constructor(x, y, dir, masterAreaType) {
+      this.forcedNextAreaType = AreaType.none;
+      this.corridorEnd = false;
+      this.x = x;
+      this.y = y;
+      this.dir = dir;
+      this.masterAreaType = masterAreaType;
+    }
+  };
+  var Room = class {
+    constructor(x = 0, y = 0, width = 0, height = 0) {
+      this.floorTiles = [];
+      this.areaType = AreaType.none;
+      this.exits = [];
+      this.sameTypeForced = false;
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+    }
+  };
+  var DungeonSettings = class {
+    constructor(params) {
+      let tempMap = /* @__PURE__ */ new Map();
+      this.seq = /* @__PURE__ */ new Map();
+      this.max = /* @__PURE__ */ new Map();
+      for (let i in params) {
+        tempMap.set(AreaType.types[i], params[i].chance);
+        this.seq.set(AreaType.types[i], params[i].seq);
+        this.max.set(AreaType.types[i], params[i].max);
+      }
+      this.chance = new Map([...tempMap.entries()].sort((a, b) => a[1] - b[1]));
+    }
+  };
   var FeatureBuilder = class {
     constructor(width, height, tiles, depth) {
       this.tiles = [];
-      /** general number of rooms */
       this.rooms = [];
-      /** rooms with unused exits */
-      this.roomsWithExits = [];
-      this.numTries = 1e3;
-      this.placeRoomAttempts = 20;
-      this.squareRoomChance = 0.2;
-      this.maxTunnelLength = 12;
+      this.unusedExits = [];
+      this.placeRoomAttempts = 500;
+      this.resizeAndPlaceAttempts = 10;
+      this.maxRooms = 50;
       this.width = width;
       this.height = height;
       this.tiles = tiles;
       this.depth = depth;
+      this.settings = new DungeonSettings([
+        { chance: 1, seq: 0, max: 0 },
+        { chance: 0, seq: 0, max: 0 }
+      ]);
     }
     generate() {
-      this.initWithTiles(Tile.TEST_FLOOR);
-    }
-    initWithTiles(tile) {
-      for (let i = 0; i < this.width; i++) {
-        for (let j = 0; j < this.height; j++) {
-          this.tiles[i + j * this.width] = tile;
+      this.initWithTiles(Tile.WALL);
+      this.makeFirstRoom();
+      this.maxRooms--;
+      for (let i = 0; i < this.maxRooms; ++i) {
+        if (!this.createFeatures()) {
+          console.log("cant make more rooms");
+          break;
         }
       }
+      this.rooms.forEach((room) => {
+        room.exits.forEach((exit) => {
+          this.tiles[exit.x + exit.y * this.width] = Tile.TEST_DOOR;
+        });
+      });
+      this.unusedExits.forEach((exit) => {
+        this.tiles[exit.x + exit.y * this.width] = Tile.DOOR;
+      });
+    }
+    // decide the shape of the room 
+    createFeatures() {
+      for (let i = 0; i < this.placeRoomAttempts; ++i) {
+        let choice = Math.random();
+        if (!this.unusedExits.length)
+          return false;
+        let exitInd = Rng.randomInt(this.unusedExits.length);
+        let randomExit = this.unusedExits[exitInd];
+        if (randomExit.forcedNextAreaType != AreaType.none) {
+          this.unusedExits.splice(exitInd, 1);
+          for (let j = 0; j < this.resizeAndPlaceAttempts; ++j)
+            if (this.createRoomByType(randomExit.forcedNextAreaType, randomExit))
+              return true;
+        } else {
+          for (let [areaType, chance] of this.settings.chance) {
+            choice -= chance;
+            if (choice <= 0) {
+              this.unusedExits.splice(exitInd, 1);
+              for (let j = 0; j < this.resizeAndPlaceAttempts; ++j)
+                if (this.createRoomByType(areaType, randomExit))
+                  return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+    makeFirstRoom() {
+      const minRoomSize = 6;
+      const maxRoomSize = 12;
+      let room = new Room();
+      room.areaType = AreaType.room;
+      room.width = Rng.randomInt(Math.round(minRoomSize / 2), Math.round(maxRoomSize / 2)) * 2 + 2;
+      room.height = Rng.randomInt(Math.round(minRoomSize / 2), Math.round(maxRoomSize / 2)) * 2 + 2;
+      room.floorTiles = new Array(this.width * this.height);
+      room.x = Math.round(this.width / 2 - room.width / 2) - 1;
+      room.y = Math.round(this.height / 2 - room.height / 2) - 1;
+      for (let x = room.x; x < room.x + room.width; ++x) {
+        for (let y = room.y; y < room.y + room.height; ++y) {
+          if (x == room.x || x == room.x + room.width - 1 || y == room.y || y == room.y + room.height - 1) {
+            room.floorTiles[x + y * this.width] = 1;
+          } else {
+            room.floorTiles[x + y * this.width] = 0;
+          }
+        }
+      }
+      room.exits.push(new Mark(Rng.randomInt(room.x + 3, room.x + room.width - 3), room.y, Direction.north, room.areaType));
+      room.exits.push(new Mark(Rng.randomInt(room.x + 3, room.x + room.width - 3), room.y + room.height - 1, Direction.south, room.areaType));
+      room.exits.push(new Mark(room.x, Rng.randomInt(room.y + 3, room.y + room.height - 3), Direction.west, room.areaType));
+      room.exits.push(new Mark(room.x + room.width - 1, Rng.randomInt(room.y + 3, room.y + room.height - 3), Direction.east, room.areaType));
+      this.addForcedType(room);
+      room.exits.forEach((exit) => {
+        room.floorTiles[exit.x + exit.y * this.width] = 2;
+        this.unusedExits.push(exit);
+      });
+      this.placeRoom(room, Tile.TEST_FLOOR);
+    }
+    makeRectRoom(randomExit, firstRoom = false) {
+      const minRoomSize = 4;
+      const maxRoomSize = 14;
+      let room = new Room();
+      room.areaType = AreaType.room;
+      room.width = Rng.randomInt(Math.round(minRoomSize / 2), Math.round(maxRoomSize / 2)) * 2 + 2;
+      room.height = Rng.randomInt(Math.round(minRoomSize / 2), Math.round(maxRoomSize / 2)) * 2 + 2;
+      room.floorTiles = new Array(this.width * this.height);
+      if (randomExit.dir == Direction.north) {
+        room.x = Rng.randomInt(randomExit.x - Math.round(room.width / 2), randomExit.x - 3);
+        room.y = randomExit.y - room.height + 1;
+      } else if (randomExit.dir == Direction.south) {
+        room.x = Rng.randomInt(randomExit.x - Math.round(room.width / 2), randomExit.x - 3);
+        room.y = randomExit.y;
+      } else if (randomExit.dir == Direction.west) {
+        room.x = randomExit.x - room.width + 1;
+        room.y = Rng.randomInt(randomExit.y - Math.round(room.height / 2), randomExit.y - 3);
+      } else if (randomExit.dir == Direction.east) {
+        room.x = randomExit.x;
+        room.y = Rng.randomInt(randomExit.y - Math.round(room.height / 2), randomExit.y - 3);
+      }
+      for (let x = room.x; x < room.x + room.width; ++x) {
+        for (let y = room.y; y < room.y + room.height; ++y) {
+          if (x == room.x || x == room.x + room.width - 1 || y == room.y || y == room.y + room.height - 1) {
+            room.floorTiles[x + y * this.width] = 1;
+          } else {
+            room.floorTiles[x + y * this.width] = 0;
+          }
+        }
+      }
+      if (randomExit.dir != Direction.south)
+        room.exits.push(new Mark(Rng.randomInt(room.x + 3, room.x + room.width - 3), room.y, Direction.north, room.areaType));
+      if (randomExit.dir != Direction.north)
+        room.exits.push(new Mark(Rng.randomInt(room.x + 3, room.x + room.width - 3), room.y + room.height - 1, Direction.south, room.areaType));
+      if (randomExit.dir != Direction.east)
+        room.exits.push(new Mark(room.x, Rng.randomInt(room.y + 3, room.y + room.height - 3), Direction.west, room.areaType));
+      if (randomExit.dir != Direction.west)
+        room.exits.push(new Mark(room.x + room.width - 1, Rng.randomInt(room.y + 3, room.y + room.height - 3), Direction.east, room.areaType));
+      this.addForcedType(room);
+      if (this.canPlace(room)) {
+        room.exits.forEach((exit) => {
+          room.floorTiles[exit.x + exit.y * this.width] = 2;
+          this.unusedExits.push(exit);
+        });
+        this.placeRoom(room, Tile.TEST_FLOOR);
+        return true;
+      }
+      return false;
+    }
+    makeCorridor(randomExit) {
+      const minCorridorLength = 3;
+      const maxCorridorLength = 12;
+      let corridor = new Room();
+      corridor.areaType = AreaType.corridor;
+      corridor.floorTiles = new Array(this.width * this.height);
+      if (randomExit.dir == Direction.north) {
+        corridor.x = randomExit.x - 1;
+        corridor.y = randomExit.y - corridor.height + 1;
+        corridor.width = 3;
+        corridor.height = Rng.randomInt(Math.round(minCorridorLength / 2), Math.round(maxCorridorLength / 2)) * 2 + 1;
+      } else if (randomExit.dir == Direction.south) {
+        corridor.x = randomExit.x - 1;
+        corridor.y = randomExit.y;
+        corridor.width = 3;
+        corridor.height = Rng.randomInt(Math.round(minCorridorLength / 2), Math.round(maxCorridorLength / 2)) * 2 + 1;
+      } else if (randomExit.dir == Direction.west) {
+        corridor.x = randomExit.x - corridor.width + 1;
+        corridor.y = randomExit.y - 1;
+        corridor.width = Rng.randomInt(Math.round(minCorridorLength / 2), Math.round(maxCorridorLength / 2)) * 2 + 1;
+        corridor.height = 3;
+      } else if (randomExit.dir == Direction.east) {
+        corridor.x = randomExit.x;
+        corridor.y = randomExit.y - 1;
+        corridor.width = Rng.randomInt(Math.round(minCorridorLength / 2), Math.round(maxCorridorLength / 2)) * 2 + 1;
+        corridor.height = 3;
+      }
+      for (let x = corridor.x; x < corridor.x + corridor.width; ++x) {
+        for (let y = corridor.y; y < corridor.y + corridor.height; ++y) {
+          if (x == corridor.x || x == corridor.x + corridor.width - 1 || y == corridor.y || y == corridor.y + corridor.height - 1) {
+            corridor.floorTiles[x + y * this.width] = 1;
+          } else {
+            corridor.floorTiles[x + y * this.width] = 0;
+          }
+        }
+      }
+      if (randomExit.dir != Direction.south) {
+        if (randomExit.dir == Direction.north)
+          corridor.exits.push(new Mark(corridor.x + 1, corridor.y, Direction.north, corridor.areaType));
+        else
+          corridor.exits.push(new Mark(Rng.randomInt(corridor.x + 2, corridor.x + corridor.width - 2), corridor.y, Direction.north, corridor.areaType));
+      }
+      if (randomExit.dir != Direction.north) {
+        if (randomExit.dir == Direction.south)
+          corridor.exits.push(new Mark(corridor.x + 1, corridor.y + corridor.height - 1, Direction.north, corridor.areaType));
+        else
+          corridor.exits.push(new Mark(Rng.randomInt(corridor.x + 2, corridor.x + corridor.width - 2), corridor.y + corridor.height - 1, Direction.south, corridor.areaType));
+      }
+      if (randomExit.dir != Direction.east) {
+        if (randomExit.dir == Direction.west)
+          corridor.exits.push(new Mark(corridor.x, corridor.y + 1, Direction.west, corridor.areaType));
+        else
+          corridor.exits.push(new Mark(corridor.x, Rng.randomInt(corridor.y + 2, corridor.y + corridor.height - 2), Direction.west, corridor.areaType));
+      }
+      if (randomExit.dir != Direction.west) {
+        if (randomExit.dir == Direction.east)
+          corridor.exits.push(new Mark(corridor.x + corridor.width - 1, corridor.y + 1, Direction.east, corridor.areaType));
+        else
+          corridor.exits.push(new Mark(corridor.x + corridor.width - 1, Rng.randomInt(corridor.y + 2, corridor.y + corridor.height - 2), Direction.east, corridor.areaType));
+      }
+      this.addForcedType(corridor);
+      if (this.canPlace(corridor)) {
+        corridor.exits.forEach((exit) => {
+          corridor.floorTiles[exit.x + exit.y * this.width] = 2;
+          this.unusedExits.push(exit);
+        });
+        this.placeRoom(corridor, Tile.TEST_FLOOR);
+        return true;
+      }
+      return false;
+    }
+    // compare area types and return corresponding room shape 
+    createRoomByType(areaType, exit) {
+      if (areaType == AreaType.room)
+        return this.makeRectRoom(exit);
+      else if (areaType == AreaType.corridor)
+        return this.makeCorridor(exit);
+      return false;
+    }
+    addForcedType(room) {
+      let choice = Math.random();
+      let sameTypeChance = this.settings.seq.get(room.areaType);
+      if (sameTypeChance && choice <= sameTypeChance && !room.sameTypeForced) {
+        room.sameTypeForced = true;
+        room.exits[Rng.randomInt(room.exits.length)].forcedNextAreaType = room.areaType;
+      }
+    }
+    canPlace(room) {
+      if (room.x <= 1 || room.y <= 1 || room.x + room.width > this.width - 1 || room.y + room.height > this.height - 1)
+        return false;
+      for (let x = room.x; x < room.x + room.width; ++x) {
+        for (let y = room.y; y < room.y + room.height; ++y) {
+          if (this.tiles[x + y * this.width] == Tile.TEST_FLOOR && room.floorTiles[x + y * this.width] == 0 || this.tiles[x + y * this.width] == Tile.TEST_FLOOR && room.floorTiles[x + y * this.width] == 1)
+            return false;
+        }
+      }
+      return true;
+    }
+    // add room on the map 
+    // private placeRoom(room: Room, tile: Tile): void {
+    // 	for (let x: number = room.x; x < room.x + room.width; ++x) {
+    // 		for (let y: number = room.y; y < room.y + room.height; ++y) {
+    // 			if (room.floorTiles[(x - room.x) + (y - room.y) * room.width] == 0) {
+    // 				this.tiles[x + y * this.width] = tile;
+    // 			} else if (room.floorTiles[(x - room.x) + (y - room.y) * room.width] == 2) {
+    // 				this.tiles[x + y * this.width] = Tile.TEST_DOOR;
+    // 			} else if (room.floorTiles[(x - room.x) + (y - room.y) * room.width] == 1) {
+    // 				this.tiles[x + y * this.width] = Tile.TEST_WALL;
+    // 			}
+    // 		}
+    // 	}
+    // 	this.unusedExits.forEach((exit) => {
+    // 		this.tiles[exit.x + exit.y * this.width] = Tile.TEST_DOOR;
+    // 	});
+    // 	this.rooms.push(room);
+    // }
+    // add room on the map 
+    placeRoom(room, tile) {
+      for (let x = room.x; x < room.x + room.width; ++x) {
+        for (let y = room.y; y < room.y + room.height; ++y) {
+          if (room.floorTiles[x + y * this.width] == 0) {
+            this.tiles[x + y * this.width] = tile;
+          } else if (room.floorTiles[x + y * this.width] == 2) {
+            this.tiles[x + y * this.width] = Tile.TEST_DOOR;
+          } else if (room.floorTiles[x + y * this.width] == 1) {
+            this.tiles[x + y * this.width] = Tile.TEST_WALL;
+          }
+        }
+      }
+      this.rooms.push(room);
+    }
+    initWithTiles(tile) {
+      for (let i = 0; i < this.width; i++)
+        for (let j = 0; j < this.height; j++)
+          this.tiles[i + j * this.width] = tile;
     }
   };
 
@@ -780,7 +1090,7 @@
   var screenHeight = 100;
   var Game = class {
     constructor() {
-      /** debug */
+      // debug 
       this.noFov = true;
       this.noCollision = true;
       this.loop = (timestamp) => {

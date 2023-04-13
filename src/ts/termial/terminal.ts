@@ -62,30 +62,12 @@ export default class Terminal {
 	}
 
 	private tilesetLoaded(): void {
-		/** initialize cached colors */
+		// initialize cached colors
 		Color.colors.forEach((color: Color): void => {
 			this.cachedFonts.set(color, this.makeColoredCanvas(color));
 		});
 
-		//this.ctx!.drawImage(this.tileset, 0, 0);
-
-		// for (let i: number = 0; i < 16; ++i) {
-		// 	for (let j: number = 0; j < 16; ++j) {
-		// 		this.ctx!.fillStyle = "rgb(" + i + 5 + ", " + j + 5 + ", " + i + 5 + ")";
-		// 		this.ctx!.fillRect(i * this.stepx, j * this.stepy, this.stepx, this.stepy);
-
-		// 		let fillColor: string = "rgb(" + Color.green.r + ", " + Color.green.g + ", " + Color.green.b + ")";
-		// 		let color: HTMLCanvasElement = this.makeColoredCanvas(fillColor);
-
-		// 		this.ctx!.drawImage(color, i * this.stepx, j * this.stepy, this.stepx, this.stepy, i * this.stepx, j * this.stepx, this.stepx, this.stepy);
-		// 	}
-		// };
-
-		//this.clear();
-
-		/**
-		 * trigger event
-		 */
+		// trigger event
 		document.dispatchEvent(this.imgLoaded);
 	}
 

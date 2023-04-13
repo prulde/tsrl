@@ -1,8 +1,8 @@
 import Actor from "../actor/actor";
 import { game } from "../main";
 import { ActorType, ActorStorage } from "../storage/actor_storage";
-import { RoomsAndMazes } from "./generation/roomsAndMazes";
-import RoomAddition from "./generation/roomAddition";
+import { RoomsAndMazes } from "./generation/rooms_and_mazes";
+import RoomAddition from "./generation/room_addition";
 import GameMap from "./map";
 import Tile from "./tile";
 import FeatureBuilder from "./generation/features";

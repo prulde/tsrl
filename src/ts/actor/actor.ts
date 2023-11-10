@@ -1,42 +1,59 @@
-import Glyph from "../termial/glyph";
-import Breed from "./breed";
+import Glyph from "../render/glyph";
 
-export default class Actor {
-	private breed: Breed;
-	private behavior: any;
-	public x: number;
-	public y: number;
-	public hp: number;
-	public blocks: boolean;
+export default abstract class Actor {
+	private _x: number;
+	private _y: number;
+	private _glyph: Glyph;
+	private _hp: number;
+	private _blocks: boolean;
 
-	constructor(x: number, y: number, breed: Breed, behavior: any) {
-		this.x = x;
-		this.y = y;
-		this.blocks = true;
-		this.breed = breed;
-		this.behavior = behavior;
-
-		this.hp = this.breed.maxHp;
+	constructor(x: number, y: number, glyph: Glyph) {
+		this._x = x;
+		this._y = y;
+		this._glyph = glyph;
+		this._blocks = true;
+		this._hp = 0;
 	};
 
-	get maxHp(): number {
-		return this.breed.maxHp;
-	};
+	public abstract isPlayer(): boolean;
 
-	get glyph(): any {
-		return this.breed.glyph;
-	};
+	get x(): number {
+		return this._x;
+	}
 
-	get attack(): number {
-		return this.breed.attack;
-	};
+	get y(): number {
+		return this._y;
+	}
 
-	get defense(): number {
-		return this.breed.defense;
-	};
+	get glyph(): Glyph {
+		return this._glyph;
+	}
 
-	get isPlayer(): boolean {
-		return this.breed.isPlayer;
-	};
+	get blocks(): boolean {
+		return this._blocks;
+	}
 
+	get hp(): number {
+		return this._hp;
+	}
+
+	set x(x: number) {
+		this._x = x;
+	}
+
+	set y(y: number) {
+		this._y = y;
+	}
+
+	set glyph(glyph: Glyph) {
+		this._glyph = glyph;
+	}
+
+	set blocks(blocks: boolean) {
+		this._blocks = blocks;
+	}
+
+	set hp(hp: number) {
+		this._hp = hp;
+	}
 };

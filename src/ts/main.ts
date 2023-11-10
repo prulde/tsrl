@@ -1,15 +1,16 @@
-import Terminal from "./termial/terminal";
-import Glyph from "./termial/glyph";
-import Color from "./termial/color";
+import Terminal from "./render/terminal";
+import Glyph from "./render/glyph";
+import Color from "./render/color";
 import GameScreen from "./screen/screen";
 import PlayScreen from "./screen/play_screen";
 import Actor from "./actor/actor";
-import Breed from "./actor/breed";
 import { Action, ActionResult } from "./action/action";
-import GameMap from "./map/map";
-import MapBuilder from "./map/map_builder";
-import Tile from "./map/tile";
-import { ActorStorage, ActorType } from "./storage/actor_storage";
+import Level from "./level/level";
+import MapBuilder from "./level/map_builder";
+import Tile from "./level/tile";
+import Fov from "./level/fov";
+import RegularLevel from "./level/regular_level";
+import Hero from "./actor/hero/hero";
 
 const InputKey = {
 	NO_INPUT: "",
@@ -34,9 +35,10 @@ let screenHeight: number = 100;
 // game state and loop 
 class Game {
 	public sightRadius: number;
-	public currentMap: GameMap;
 	public player: Actor;
 	public currentScreen: GameScreen;
+	public currentLevel: RegularLevel;
+	public playerFov: Fov;
 	private lastRender: number;
 
 	// debug 
@@ -47,12 +49,13 @@ class Game {
 		this.sightRadius = 8;
 		this.lastRender = 0;
 
-		this.currentMap = new MapBuilder(100, 100, 1).makeMap();
-		this.player = ActorStorage.makeActor(25, 25, ActorType.player, null);
+		this.currentLevel = new MapBuilder(100, 100, 1).makeMap();
+		this.playerFov = new Fov(this.currentLevel, 8);
+		this.player = new Hero(25, 25, new Glyph("@", Color.white, Color.black));
 		this.currentScreen = new PlayScreen(screenWidth, screenHeight);
 
-		this.currentMap.addActor(this.player);
-		this.currentMap.computeFov(this.player.x, this.player.y);
+		this.currentLevel.addActor(this.player);
+		this.playerFov.computeFov(this.player.x, this.player.y);
 
 		// start game loop 
 		window.requestAnimationFrame(this.loop);
@@ -70,7 +73,7 @@ class Game {
 
 			}
 			if (result.moved) {
-				this.currentMap.computeFov(this.player.x, this.player.y);
+				this.playerFov.computeFov(this.player.x, this.player.y);
 				//this.currentScreen.moveCamera(this.player.x, this.player.y);
 			}
 			if (result.performed) {
@@ -84,7 +87,7 @@ class Game {
 	}
 
 	private loop = (timestamp: number): void => {
-		let progress: number = timestamp - this.lastRender;
+		// let progress: number = timestamp - this.lastRender;
 		//fpsBar.innerText = (1 / (progress / 1000)).toFixed(4);
 		//if (inputKey !== InputKey.NO_INPUT)
 		this.update();

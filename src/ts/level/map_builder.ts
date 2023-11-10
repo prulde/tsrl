@@ -3,10 +3,12 @@ import { game } from "../main";
 import { ActorType, ActorStorage } from "../storage/actor_storage";
 import { RoomsAndMazes } from "./generation/rooms_and_mazes";
 import RoomAddition from "./generation/room_addition";
-import GameMap from "./map";
+import Level from "./level";
 import Tile from "./tile";
 import FeatureBuilder from "./generation/features";
+import RegularLevel from "./regular_level";
 
+// use strategy?
 export default class MapBuilder {
 	private width: number;
 	private height: number;
@@ -21,7 +23,7 @@ export default class MapBuilder {
 		this.depth = depth;
 	}
 
-	public makeMap(): GameMap {
+	public makeMap(): RegularLevel {
 		//this.populate(0.05, Tile.WALL);
 		//this.initWithTiles(Tile.WALL);
 		//let catacombs: RoomAddition = new RoomAddition(this.width, this.height, this.tiles, this.depth);
@@ -33,7 +35,7 @@ export default class MapBuilder {
 		//this.addBoundaries();
 		let tileMap: FeatureBuilder = new FeatureBuilder(this.width, this.height, this.tiles, this.depth);
 		tileMap.generate();
-		return new GameMap(this.width, this.height, this.tiles, this.actors);
+		return new RegularLevel(this.width, this.height, this.tiles, this.actors);
 	}
 
 	private addActors(amount: number): void {
@@ -45,7 +47,7 @@ export default class MapBuilder {
 				x = Math.floor(Math.random() * this.width);
 				y = Math.floor(Math.random() * this.height);
 			} while (this.tiles[x + y * this.width].blocks);
-			this.actors.push(ActorStorage.makeActor(x, y, ActorType.dragon, null));
+			//this.actors.push(ActorStorage.makeActor(x, y, ActorType.dragon));
 		}
 	}
 

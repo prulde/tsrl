@@ -1,8 +1,8 @@
 import Actor from "../actor/actor";
 import Breed from "../actor/breed";
 import { terminal } from "../main";
-import Color from "../termial/color";
-import Glyph from "../termial/glyph";
+import Color from "../render/color";
+import Glyph from "../render/glyph";
 
 type StorageType = {
 	name: string,
@@ -46,13 +46,13 @@ class ActorStorage {
 		return null;
 	}
 
-	public static makeActor(x: number, y: number, type: ActorType, behaviour: null): Actor {
-		const breed: Breed | null = this.getBreed(type);
-		if (!breed) {
-			throw new TypeError(`breed:${type} is not defined`);
-		}
-		return new Actor(x, y, breed, behaviour);
-	}
+	// public static makeActor(x: number, y: number, type: ActorType): Actor {
+	// 	const breed: Breed | null = this.getBreed(type);
+	// 	if (!breed) {
+	// 		throw new TypeError(`breed:${type} is not defined`);
+	// 	}
+	// 	return new Actor(x, y);
+	// }
 }
 
 export { ActorStorage, ActorType, StorageType };

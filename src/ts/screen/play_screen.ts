@@ -1,9 +1,10 @@
 import { Action, WalkAction, RestAction } from "../action/action";
 import Actor from "../actor/actor";
 import { InputKey, game, terminal } from "../main";
-import Tile from "../map/tile";
+import Tile from "../level/tile";
 import Camera from "./camera";
 import GameScreen from "./screen";
+import Level from "../level/level";
 
 export default class PlayScreen implements GameScreen {
 	private camera: Camera;
@@ -23,20 +24,20 @@ export default class PlayScreen implements GameScreen {
 	}
 
 	private drawMap(): void {
-		for (let i: number = 0; i < this.camera.getWidth(); ++i) {
-			for (let j: number = 0; j < this.camera.getHeight(); ++j) {
-				let x: number = this.camera.getCamerax() + i;
-				let y: number = this.camera.getCameray() + j;
+		for (let i: number = 0; i < this.camera.width; ++i) {
+			for (let j: number = 0; j < this.camera.height; ++j) {
+				let x: number = this.camera.camerax + i;
+				let y: number = this.camera.cameray + j;
 
 				if (game.noFov) {
-					terminal.putChar(game.currentMap.getChar(x, y), i, j);
+					terminal.putChar(game.currentLevel.getChar(x, y), i, j);
 					continue;
 				}
 
-				if (game.currentMap.isInFov(x, y)) {
-					terminal.putChar(game.currentMap.getChar(x, y), i, j);
+				if (game.playerFov.isInFov(x, y)) {
+					terminal.putChar(game.currentLevel.getChar(x, y), i, j);
 				}
-				else if (game.currentMap.isExplored(x, y)) {
+				else if (game.currentLevel.isExplored(x, y)) {
 					terminal.putChar(Tile.FOG.glyph, i, j);
 				}
 				// because i dont use clear() for render
@@ -52,7 +53,7 @@ export default class PlayScreen implements GameScreen {
 	}
 
 	private drawActors(): void {
-		const mapActors: Actor[] = game.currentMap.actors;
+		const mapActors: Actor[] = game.currentLevel.actors;
 		for (const actor of mapActors) {
 			const point = this.camera.toCameraCoordinates(actor.x, actor.y);
 
@@ -62,7 +63,7 @@ export default class PlayScreen implements GameScreen {
 			}
 
 
-			if (game.currentMap.isInFov(actor.x, actor.y)) {
+			if (game.playerFov.isInFov(actor.x, actor.y)) {
 
 
 				if (point.inBounds) {

@@ -16,15 +16,16 @@ class ActionResult {
 	}
 }
 
-interface Action {
-	perform(actor: Actor): ActionResult;
+abstract class Action {
+	abstract perform(actor: Actor): ActionResult;
 }
 
-class WalkAction implements Action {
+class WalkAction extends Action {
 	private x: number;
 	private y: number;
 
 	constructor(x: number, y: number) {
+		super();
 		this.x = x;
 		this.y = y;
 	}
@@ -41,11 +42,11 @@ class WalkAction implements Action {
 		let targetx: number = this.x + owner.x;
 		let targety: number = this.y + owner.y;
 
-		if (game.currentMap.isWall(targetx, targety)) {
+		if (game.currentLevel.blocks(targetx, targety)) {
 			return new ActionResult(false, true, null, null);
 		}
 
-		const mapActors: Actor[] = game.currentMap.actors;
+		const mapActors: Actor[] = game.currentLevel.actors;
 		for (const actor of mapActors) {
 			if (actor.blocks && actor.x === targetx && actor.y === targety) {
 				if (!owner.isPlayer && !actor.isPlayer) {

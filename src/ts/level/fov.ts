@@ -1,4 +1,4 @@
-import GameMap from "./map";
+import Level from "./level";
 
 class Point {
 	public readonly x: number;
@@ -58,29 +58,24 @@ class Row {
 }
 
 export default class Fov {
-	private width: number;
-	private height: number;
-	private inFov: Array<Point>;
-	private explored: boolean[];
-	private range: number;
-	private radius: number;
-	private map: GameMap;
+	private _inFov: Array<Point>;
+	private _range: number;
+	private _radius: number;
+	private _level: Level;
 
-	constructor(width: number, height: number, map: GameMap) {
-		this.width = width;
-		this.height = height;
-		this.inFov = new Array<Point>();
-		this.explored = new Array(width * height);
-		this.range = 10;
-		this.radius = this.range * this.range;
-		this.map = map;
-
-		this.explored.fill(false);
+	constructor(level: Level, range: number) {
+		this._level = level;
+		this._inFov = new Array<Point>();
+		this._range = range;
+		this._radius = this._range * this._range;
 	}
 
 	public isInFov(x: number, y: number): boolean {
+		if (!this._level.isInsideMap(x, y)) {
+			return false;
+		}
 		let value: boolean = false;
-		this.inFov.forEach((p: Point): void => {
+		this._inFov.forEach((p: Point): void => {
 			if (p.x == x && p.y == y) {
 				value = true;
 				return;
@@ -89,13 +84,9 @@ export default class Fov {
 		return value;
 	}
 
-	public isExplored(x: number, y: number): boolean {
-		return this.explored[x + y * this.width];
-	}
-
 	public computeFov(x: number, y: number): void {
-		this.inFov = [];
-		this.inFov.push(new Point(x, y));
+		this._inFov = [];
+		this._inFov.push(new Point(x, y));
 
 		for (let i: number = 0; i < 4; ++i) {
 			let q: Quadrant = new Quadrant(i, new Point(x, y));
@@ -105,7 +96,7 @@ export default class Fov {
 
 	private scan(row: Row, q: Quadrant): void {
 		// exclude 1 point perpendicular to player
-		if (row.depth > this.range - 1) {
+		if (row.depth > this._range - 1) {
 			return;
 		}
 
@@ -116,18 +107,18 @@ export default class Fov {
 		let prevTile: Point | null = null;
 
 		row.rowTiles().forEach((tile: Point): void => {
-			if ((Math.pow(tile.x, 2) + Math.pow(tile.y, 2)) > this.radius) {
+			if ((Math.pow(tile.x, 2) + Math.pow(tile.y, 2)) > this._radius) {
 				return;
 			}
 
-			if (this.isWall(tile, q) || this.isSymmetric(row, tile)) {
+			if (this.blocksSight(tile, q) || this.isSymmetric(row, tile)) {
 				this.reveal(tile, q);
 			}
 			if (prevTile) {
-				if (this.isWall(prevTile, q) && !this.isWall(tile, q)) {
+				if (this.blocksSight(prevTile, q) && !this.blocksSight(tile, q)) {
 					row.startSlope = this.slope(tile, q);
 				}
-				if (!this.isWall(prevTile, q) && this.isWall(tile, q)) {
+				if (!this.blocksSight(prevTile, q) && this.blocksSight(tile, q)) {
 					let nextRow: Row = row.nextRow();
 					nextRow.endSlope = this.slope(tile, q);
 					this.scan(nextRow, q);
@@ -137,7 +128,7 @@ export default class Fov {
 		});
 
 		if (prevTile) {
-			if (!this.isWall(prevTile, q)) {
+			if (!this.blocksSight(prevTile, q)) {
 				this.scan(row.nextRow(), q);
 			}
 		}
@@ -145,19 +136,16 @@ export default class Fov {
 
 	private reveal(tile: Point, q: Quadrant): void {
 		let converted: Point = q.transfom(tile);
-		if (!this.map.isInsideMap(converted.x, converted.y)) {
+		let revealed: boolean = this._level.reveal(converted.x, converted.y);
+		if (!revealed) {
 			return;
 		}
-		this.inFov.push(new Point(converted.x, converted.y));
-		this.explored[converted.x + converted.y * this.width] = true;
+		this._inFov.push(new Point(converted.x, converted.y));
 	}
 
-	private isWall(tile: Point, q: Quadrant): boolean {
+	private blocksSight(tile: Point, q: Quadrant): boolean {
 		let converted: Point = q.transfom(tile);
-		if (!this.map.isInsideMap(converted.x, converted.y)) {
-			return true; // Tile.BOUNDS
-		}
-		return this.map.isWall(converted.x, converted.y);
+		return this._level.blocks(converted.x, converted.y);
 	}
 
 	private slope(tile: Point, q: Quadrant): number {

@@ -1,5 +1,4 @@
 import Color from "./color";
-import CharCode from "./charcode";
 
 export default class Glyph {
 	private readonly _glyph: number;

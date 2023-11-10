@@ -1,23 +1,21 @@
 import Actor from "../actor/actor";
-import Color from "../termial/color";
-import Glyph from "../termial/glyph";
+import Color from "../render/color";
+import Glyph from "../render/glyph";
 import Fov from "./fov";
 import Tile from "./tile";
 
-export default class GameMap {
+export default class Level {
 	private _width: number;
 	private _height: number;
 	private _tiles: Tile[] = [];
 	private _actors: Actor[] = [];
 	private _corpses: Actor[] = [];
-	private fov: Fov;
 
 	constructor(width: number, height: number, tiles: Tile[], actors: Actor[]) {
 		this._width = width;
 		this._height = height;
 		this._tiles = tiles;
 		this._actors = actors;
-		this.fov = new Fov(width, height, this);
 	}
 
 	public isInsideMap(x: number, y: number): boolean {
@@ -27,8 +25,44 @@ export default class GameMap {
 		return true;
 	}
 
+	public isExplored(x: number, y: number): boolean {
+		if (!this.isInsideMap(x, y)) {
+			return false;
+		}
+		return this._tiles[x + y * this.width].explored;
+	}
+
+	public reveal(x: number, y: number): boolean {
+		if (!this.isInsideMap(x, y)) {
+			return false;
+		}
+		this._tiles[x + y * this.width].explored = true;
+		return true;
+	}
+
 	public addActor(actor: Actor): void {
 		this._actors.push(actor);
+	}
+
+	public blocks(x: number, y: number): boolean {
+		if (this.isInsideMap(x, y) && this._tiles[x + y * this._width].blocks) { // Tile.BOUNDS
+			return true;
+		}
+		return false;
+	}
+
+	public getChar(x: number, y: number): Glyph {
+		if (this.isInsideMap(x, y)) {
+			return this._tiles[x + y * this._width].glyph;
+		}
+		return Tile.BOUND.glyph;
+	}
+
+	public getColor(x: number, y: number): Color {
+		if (this.isInsideMap(x, y)) {
+			return this._tiles[x + y * this._width].glyph.fcol;
+		}
+		return Color.red;
 	}
 
 	public actorDied(actor: Actor): void {
@@ -39,47 +73,6 @@ export default class GameMap {
 				return;
 			}
 		}
-	}
-
-	public computeFov(x: number, y: number): void {
-		this.fov.computeFov(x, y);
-	}
-
-	public isInFov(x: number, y: number): boolean {
-		if (!this.isInsideMap(x, y)) {
-			return false;
-		}
-		return this.fov.isInFov(x, y);
-	}
-
-	public isExplored(x: number, y: number): boolean {
-		if (!this.isInsideMap(x, y)) {
-			return false;
-		}
-		return this.fov.isExplored(x, y);
-	}
-
-	public isWall(x: number, y: number): boolean {
-		if (this.isInsideMap(x, y) && this._tiles[x + y * this._width].blocks) {
-			return true;
-		}
-		return false;
-	}
-
-	public getChar(x: number, y: number): Glyph {
-		if (this.isInsideMap(x, y)) {
-			return this._tiles[x + y * this._width].glyph;
-
-		}
-		return Tile.BOUND.glyph;
-	}
-
-	public getColor(x: number, y: number): Color {
-		if (this.isInsideMap(x, y)) {
-			return this._tiles[x + y * this._width].glyph.fcol;
-
-		}
-		return Color.red;
 	}
 
 	get width(): number {

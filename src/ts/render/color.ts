@@ -1,21 +1,18 @@
 export default class Color {
 	/** 
 	 * @param color - initial color
-	 * @param factor - float number
-	 * @returns a new Color that is darker than the initial color
+	 * @param factor - float number (% of original color)
+	 * @returns a new Color that is darker than the original color
 	 */
 	public static makeDarker(color: Color, factor: number): Color {
 		return new Color(Math.max(Math.floor(color.r * factor), 0),
 			Math.max(Math.floor(color.g * factor), 0),
 			Math.max(Math.floor(color.b * factor), 0));
 	}
-	/**
-	 * list of all colors, including user-defined
-	 */
+
 	public static colors: Color[] = [];
 
 	public static readonly black: Color = new Color(0, 0, 0);
-	//public static readonly gray = new Color(0, 0, 0);
 	public static readonly darkestGrey: Color = new Color(31, 31, 31);
 	public static readonly darkerGrey: Color = new Color(63, 63, 63);
 	public static readonly darkGrey: Color = new Color(95, 95, 95);
@@ -47,15 +44,7 @@ export default class Color {
 	public static readonly pink: Color = new Color(255, 0, 127);
 	public static readonly crimson: Color = new Color(255, 0, 63);
 
-	readonly r: number;
-	readonly g: number;
-	readonly b: number;
-
-	constructor(r: number, g: number, b: number) {
-		this.r = r;
-		this.g = g;
-		this.b = b;
+	constructor(readonly r: number, readonly g: number, readonly b: number) {
 		Color.colors.push(this);
 	}
-
 }

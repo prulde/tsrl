@@ -1,5 +1,5 @@
-import Color from "../termial/color";
-import Glyph from "../termial/glyph";
+import Color from "../render/color";
+import Glyph from "../render/glyph";
 
 export default class Tile {
 	static GRASS: Tile = new Tile(new Glyph(".", Color.green, Color.black), false);
@@ -15,13 +15,14 @@ export default class Tile {
 	static TEST_WALL: Tile = new Tile(new Glyph("#", new Color(0, 120, 0), Color.black), true);
 	static TEST_FLOOR: Tile = new Tile(new Glyph("#", Color.darkestGrey, Color.black), false);
 
-
-
 	private readonly _glyph: Glyph;
+	private readonly _tintedGlyph: Glyph;
 	private readonly _blocks: boolean;
+	private _explored: boolean = false;
 
 	constructor(glyph: Glyph, blocks: boolean) {
 		this._glyph = glyph;
+		this._tintedGlyph = new Glyph(this._glyph.char, Color.makeDarker(this._glyph.fcol, 0.5), this._glyph.bcol);
 		this._blocks = blocks;
 	}
 
@@ -29,7 +30,19 @@ export default class Tile {
 		return this._glyph;
 	}
 
+	get tintedGlyph(): Glyph {
+		return this._tintedGlyph;
+	}
+
 	get blocks(): boolean {
 		return this._blocks;
+	}
+
+	get explored(): boolean {
+		return this._explored;
+	}
+
+	set explored(explored: boolean) {
+		this._explored = explored;
 	}
 }

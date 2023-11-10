@@ -1,11 +1,17 @@
 "use strict";
 (() => {
-  // src/ts/termial/color.ts
+  // src/ts/render/color.ts
   var _Color = class {
+    constructor(r, g, b) {
+      this.r = r;
+      this.g = g;
+      this.b = b;
+      _Color.colors.push(this);
+    }
     /** 
      * @param color - initial color
-     * @param factor - float number
-     * @returns a new Color that is darker than the initial color
+     * @param factor - float number (% of original color)
+     * @returns a new Color that is darker than the original color
      */
     static makeDarker(color, factor) {
       return new _Color(
@@ -14,20 +20,10 @@
         Math.max(Math.floor(color.b * factor), 0)
       );
     }
-    constructor(r, g, b) {
-      this.r = r;
-      this.g = g;
-      this.b = b;
-      _Color.colors.push(this);
-    }
   };
   var Color = _Color;
-  /**
-   * list of all colors, including user-defined
-   */
   Color.colors = [];
   Color.black = new _Color(0, 0, 0);
-  //public static readonly gray = new Color(0, 0, 0);
   Color.darkestGrey = new _Color(31, 31, 31);
   Color.darkerGrey = new _Color(63, 63, 63);
   Color.darkGrey = new _Color(95, 95, 95);
@@ -58,7 +54,7 @@
   Color.pink = new _Color(255, 0, 127);
   Color.crimson = new _Color(255, 0, 63);
 
-  // src/ts/termial/terminal.ts
+  // src/ts/render/terminal.ts
   var Terminal = class {
     constructor(width, height, tilesetUrl, stepx, stepy) {
       this.cachedFonts = /* @__PURE__ */ new Map();
@@ -98,14 +94,12 @@
       });
       document.dispatchEvent(this.imgLoaded);
     }
-    /** fills the terminal with black color */
+    //fills the terminal with black color 
     clear() {
       this.ctx.fillStyle = "#000000";
       this.ctx.fillRect(0, 0, this.widthPixels, this.heightPixels);
     }
-    /**
-     * Writes one glyph to [x, y]
-     */
+    // writes one glyph to [x, y]
     putChar(glyph, x, y) {
       if (x < 0 || x > this.width)
         throw new RangeError(`x:${x} must be within range [0,${this.width}]`);
@@ -122,7 +116,7 @@
     // 		this.putChar(str.charAt(i), x + i, y);
     // 	}
     // };
-    /** Renders only modified glyphs since the last call. */
+    // Renders only modified glyphs since the last call. 
     render() {
       for (let x = 0; x < this.width; ++x) {
         for (let y = 0; y < this.height; ++y) {
@@ -148,52 +142,7 @@
     }
   };
 
-  // src/ts/action/action.ts
-  var ActionResult = class {
-    constructor(performed, moved, altAction, altScreen) {
-      this.performed = performed;
-      this.moved = moved;
-      this.altAction = altAction;
-      this.altScreen = altScreen;
-    }
-  };
-  var WalkAction = class {
-    constructor(x, y) {
-      this.x = x;
-      this.y = y;
-    }
-    perform(owner) {
-      if (game.noCollision) {
-        owner.x += this.x;
-        owner.y += this.y;
-        return new ActionResult(true, true, null, null);
-      }
-      let targetx = this.x + owner.x;
-      let targety = this.y + owner.y;
-      if (game.currentMap.isWall(targetx, targety)) {
-        return new ActionResult(false, true, null, null);
-      }
-      const mapActors = game.currentMap.actors;
-      for (const actor of mapActors) {
-        if (actor.blocks && actor.x === targetx && actor.y === targety) {
-          if (!owner.isPlayer && !actor.isPlayer) {
-            break;
-          }
-          return new ActionResult(true, true, null, null);
-        }
-      }
-      owner.x += this.x;
-      owner.y += this.y;
-      return new ActionResult(true, true, null, null);
-    }
-  };
-  var RestAction = class {
-    perform(owner) {
-      return new ActionResult(true, false, null, null);
-    }
-  };
-
-  // src/ts/termial/glyph.ts
+  // src/ts/render/glyph.ts
   var Glyph = class {
     constructor(glyph, fcolor, bcolor) {
       if (typeof glyph === "string") {
@@ -215,17 +164,76 @@
     }
   };
 
-  // src/ts/map/tile.ts
+  // src/ts/action/action.ts
+  var ActionResult = class {
+    constructor(performed, moved, altAction, altScreen) {
+      this.performed = performed;
+      this.moved = moved;
+      this.altAction = altAction;
+      this.altScreen = altScreen;
+    }
+  };
+  var Action = class {
+  };
+  var WalkAction = class extends Action {
+    constructor(x, y) {
+      super();
+      this.x = x;
+      this.y = y;
+    }
+    perform(owner) {
+      if (game.noCollision) {
+        owner.x += this.x;
+        owner.y += this.y;
+        return new ActionResult(true, true, null, null);
+      }
+      let targetx = this.x + owner.x;
+      let targety = this.y + owner.y;
+      if (game.currentLevel.blocks(targetx, targety)) {
+        return new ActionResult(false, true, null, null);
+      }
+      const mapActors = game.currentLevel.actors;
+      for (const actor of mapActors) {
+        if (actor.blocks && actor.x === targetx && actor.y === targety) {
+          if (!owner.isPlayer && !actor.isPlayer) {
+            break;
+          }
+          return new ActionResult(true, true, null, null);
+        }
+      }
+      owner.x += this.x;
+      owner.y += this.y;
+      return new ActionResult(true, true, null, null);
+    }
+  };
+  var RestAction = class {
+    perform(owner) {
+      return new ActionResult(true, false, null, null);
+    }
+  };
+
+  // src/ts/level/tile.ts
   var _Tile = class {
     constructor(glyph, blocks) {
+      this._explored = false;
       this._glyph = glyph;
+      this._tintedGlyph = new Glyph(this._glyph.char, Color.makeDarker(this._glyph.fcol, 0.5), this._glyph.bcol);
       this._blocks = blocks;
     }
     get glyph() {
       return this._glyph;
     }
+    get tintedGlyph() {
+      return this._tintedGlyph;
+    }
     get blocks() {
       return this._blocks;
+    }
+    get explored() {
+      return this._explored;
+    }
+    set explored(explored) {
+      this._explored = explored;
     }
   };
   var Tile = _Tile;
@@ -244,60 +252,60 @@
   // src/ts/screen/camera.ts
   var Camera = class {
     constructor(width, height) {
-      this.width = width;
-      this.height = height;
-      this.camerax = 1;
-      this.cameray = 1;
+      this._width = width;
+      this._height = height;
+      this._camerax = 1;
+      this._cameray = 1;
     }
     moveCamera(targetx, targety) {
-      let x = targetx - this.width / 2;
-      let y = targety - this.height / 2;
-      if (x == this.camerax && y == this.cameray) {
+      let x = targetx - this._width / 2;
+      let y = targety - this._height / 2;
+      if (x == this._camerax && y == this._cameray) {
         return;
       }
       if (x < 0)
         x = 0;
       if (y < 0)
         y = 0;
-      if (x > game.currentMap.width - this.width)
-        x = game.currentMap.width - this.width;
-      if (y > game.currentMap.height - this.height)
-        y = game.currentMap.height - this.height;
-      this.camerax = x;
-      this.cameray = y;
+      if (x > game.currentLevel.width - this._width)
+        x = game.currentLevel.width - this._width;
+      if (y > game.currentLevel.height - this._height)
+        y = game.currentLevel.height - this._height;
+      this._camerax = x;
+      this._cameray = y;
     }
     toCameraCoordinates(x, y) {
-      let newx = x - this.camerax;
-      let newy = y - this.cameray;
-      if (newx < 0 || newy < 0 || newx >= this.width || newy >= this.height)
+      let newx = x - this._camerax;
+      let newy = y - this._cameray;
+      if (newx < 0 || newy < 0 || newx >= this._width || newy >= this._height)
         return { _x: x, _y: y, inBounds: false };
       x = newx;
       y = newy;
       return { _x: x, _y: y, inBounds: true };
     }
     isInsideViewport(x, y) {
-      if (x < 1 || y < 1 || x >= this.width + 1 || y >= this.height + 1)
+      if (x < 1 || y < 1 || x >= this._width + 1 || y >= this._height + 1)
         return false;
       return true;
     }
     getGlobalCoordinates(x, y) {
-      if (x < 1 || y < 1 || x >= this.width + 1 || y >= this.height + 1)
+      if (x < 1 || y < 1 || x >= this._width + 1 || y >= this._height + 1)
         return { x, y, inBounds: false };
-      x += this.camerax;
-      y += this.cameray;
+      x += this._camerax;
+      y += this._cameray;
       return { _x: x, _y: y, inBounds: true };
     }
-    getCamerax() {
-      return this.camerax;
+    get camerax() {
+      return this._camerax;
     }
-    getCameray() {
-      return this.cameray;
+    get cameray() {
+      return this._cameray;
     }
-    getWidth() {
-      return this.width;
+    get width() {
+      return this._width;
     }
-    getHeight() {
-      return this.height;
+    get height() {
+      return this._height;
     }
   };
 
@@ -314,17 +322,17 @@
       terminal.render();
     }
     drawMap() {
-      for (let i = 0; i < this.camera.getWidth(); ++i) {
-        for (let j = 0; j < this.camera.getHeight(); ++j) {
-          let x = this.camera.getCamerax() + i;
-          let y = this.camera.getCameray() + j;
+      for (let i = 0; i < this.camera.width; ++i) {
+        for (let j = 0; j < this.camera.height; ++j) {
+          let x = this.camera.camerax + i;
+          let y = this.camera.cameray + j;
           if (game.noFov) {
-            terminal.putChar(game.currentMap.getChar(x, y), i, j);
+            terminal.putChar(game.currentLevel.getChar(x, y), i, j);
             continue;
           }
-          if (game.currentMap.isInFov(x, y)) {
-            terminal.putChar(game.currentMap.getChar(x, y), i, j);
-          } else if (game.currentMap.isExplored(x, y)) {
+          if (game.playerFov.isInFov(x, y)) {
+            terminal.putChar(game.currentLevel.getChar(x, y), i, j);
+          } else if (game.currentLevel.isExplored(x, y)) {
             terminal.putChar(Tile.FOG.glyph, i, j);
           } else {
             terminal.putChar(Tile.FOG.glyph, i, j);
@@ -335,14 +343,14 @@
     drawCorpses() {
     }
     drawActors() {
-      const mapActors = game.currentMap.actors;
+      const mapActors = game.currentLevel.actors;
       for (const actor of mapActors) {
         const point = this.camera.toCameraCoordinates(actor.x, actor.y);
         if (game.noFov && point.inBounds) {
           terminal.putChar(actor.glyph, point._x, point._y);
           continue;
         }
-        if (game.currentMap.isInFov(actor.x, actor.y)) {
+        if (game.playerFov.isInFov(actor.x, actor.y)) {
           if (point.inBounds) {
             terminal.putChar(actor.glyph, point._x, point._y);
           } else {
@@ -386,291 +394,6 @@
     }
   };
 
-  // src/ts/actor/actor.ts
-  var Actor = class {
-    constructor(x, y, breed, behavior) {
-      this.x = x;
-      this.y = y;
-      this.blocks = true;
-      this.breed = breed;
-      this.behavior = behavior;
-      this.hp = this.breed.maxHp;
-    }
-    get maxHp() {
-      return this.breed.maxHp;
-    }
-    get glyph() {
-      return this.breed.glyph;
-    }
-    get attack() {
-      return this.breed.attack;
-    }
-    get defense() {
-      return this.breed.defense;
-    }
-    get isPlayer() {
-      return this.breed.isPlayer;
-    }
-  };
-
-  // src/ts/actor/breed.ts
-  var Breed = class {
-    //(name: string, glyph: Glyph, maxHp: number, attack: number, defense: number, isPlayer: boolean)
-    constructor(type) {
-      this.name = type.name;
-      this.glyph = type.glyph;
-      this.maxHp = type.maxHp;
-      this.attack = type.attack;
-      this.defense = type.defense;
-      this.isPlayer = type.isPlayer;
-    }
-  };
-
-  // src/ts/storage/actor_storage.ts
-  var ActorStorage = class {
-    static getBreed(type) {
-      for (let i = 0; i < this.definedTypes.length; ++i) {
-        if (i === type) {
-          return new Breed(this.definedTypes[i]);
-        }
-      }
-      return null;
-    }
-    static makeActor(x, y, type, behaviour) {
-      const breed = this.getBreed(type);
-      if (!breed) {
-        throw new TypeError(`breed:${type} is not defined`);
-      }
-      return new Actor(x, y, breed, behaviour);
-    }
-  };
-  ActorStorage.definedTypes = [
-    {
-      name: "you",
-      glyph: new Glyph("@", Color.white, Color.black),
-      maxHp: 30,
-      attack: 10,
-      defense: 5,
-      isPlayer: true
-    },
-    {
-      name: "dragon",
-      glyph: new Glyph("D", Color.yellow, Color.black),
-      maxHp: 15,
-      attack: 5,
-      defense: 0,
-      isPlayer: false
-    }
-  ];
-
-  // src/ts/map/fov.ts
-  var Point = class {
-    constructor(x, y) {
-      this.x = x;
-      this.y = y;
-    }
-  };
-  var Quadrant = class {
-    constructor(sector, origin) {
-      this.sector = sector;
-      this.origin = origin;
-    }
-    transfom(tile) {
-      if (this.sector == 0) {
-        return new Point(this.origin.x + tile.x, this.origin.y - tile.y);
-      } else if (this.sector == 2) {
-        return new Point(this.origin.x + tile.x, this.origin.y + tile.y);
-      } else if (this.sector == 1) {
-        return new Point(this.origin.x + tile.y, this.origin.y + tile.x);
-      } else {
-        return new Point(this.origin.x - tile.y, this.origin.y + tile.x);
-      }
-    }
-  };
-  var Row = class {
-    constructor(depth, startSlope, endSlope) {
-      this.depth = depth;
-      this.startSlope = startSlope;
-      this.endSlope = endSlope;
-    }
-    rowTiles() {
-      let tiles = new Array();
-      let minCol = Math.floor(this.depth * this.startSlope + 0.5);
-      let maxCol = Math.ceil(this.depth * this.endSlope - 0.5);
-      for (let x = minCol; x < maxCol + 1; ++x) {
-        tiles.push(new Point(x, this.depth));
-      }
-      return tiles;
-    }
-    nextRow() {
-      return new Row(this.depth + 1, this.startSlope, this.endSlope);
-    }
-  };
-  var Fov = class {
-    constructor(width, height, map) {
-      this.width = width;
-      this.height = height;
-      this.inFov = new Array();
-      this.explored = new Array(width * height);
-      this.range = 10;
-      this.radius = this.range * this.range;
-      this.map = map;
-      this.explored.fill(false);
-    }
-    isInFov(x, y) {
-      let value = false;
-      this.inFov.forEach((p) => {
-        if (p.x == x && p.y == y) {
-          value = true;
-          return;
-        }
-      });
-      return value;
-    }
-    isExplored(x, y) {
-      return this.explored[x + y * this.width];
-    }
-    computeFov(x, y) {
-      this.inFov = [];
-      this.inFov.push(new Point(x, y));
-      for (let i = 0; i < 4; ++i) {
-        let q = new Quadrant(i, new Point(x, y));
-        this.scan(new Row(1, -1, 1), q);
-      }
-    }
-    scan(row, q) {
-      if (row.depth > this.range - 1) {
-        return;
-      }
-      if (row.startSlope >= row.endSlope) {
-        return;
-      }
-      let prevTile = null;
-      row.rowTiles().forEach((tile) => {
-        if (Math.pow(tile.x, 2) + Math.pow(tile.y, 2) > this.radius) {
-          return;
-        }
-        if (this.isWall(tile, q) || this.isSymmetric(row, tile)) {
-          this.reveal(tile, q);
-        }
-        if (prevTile) {
-          if (this.isWall(prevTile, q) && !this.isWall(tile, q)) {
-            row.startSlope = this.slope(tile, q);
-          }
-          if (!this.isWall(prevTile, q) && this.isWall(tile, q)) {
-            let nextRow = row.nextRow();
-            nextRow.endSlope = this.slope(tile, q);
-            this.scan(nextRow, q);
-          }
-        }
-        prevTile = tile;
-      });
-      if (prevTile) {
-        if (!this.isWall(prevTile, q)) {
-          this.scan(row.nextRow(), q);
-        }
-      }
-    }
-    reveal(tile, q) {
-      let converted = q.transfom(tile);
-      if (!this.map.isInsideMap(converted.x, converted.y)) {
-        return;
-      }
-      this.inFov.push(new Point(converted.x, converted.y));
-      this.explored[converted.x + converted.y * this.width] = true;
-    }
-    isWall(tile, q) {
-      let converted = q.transfom(tile);
-      if (!this.map.isInsideMap(converted.x, converted.y)) {
-        return true;
-      }
-      return this.map.isWall(converted.x, converted.y);
-    }
-    slope(tile, q) {
-      return (2 * tile.x - 1) / (2 * tile.y);
-    }
-    isSymmetric(row, tile) {
-      return tile.x >= row.depth * row.startSlope && tile.x <= row.depth * row.endSlope;
-    }
-  };
-
-  // src/ts/map/map.ts
-  var GameMap = class {
-    constructor(width, height, tiles, actors) {
-      this._tiles = [];
-      this._actors = [];
-      this._corpses = [];
-      this._width = width;
-      this._height = height;
-      this._tiles = tiles;
-      this._actors = actors;
-      this.fov = new Fov(width, height, this);
-    }
-    isInsideMap(x, y) {
-      if (x < 0 || x >= this._width || y < 0 || y >= this._height) {
-        return false;
-      }
-      return true;
-    }
-    addActor(actor) {
-      this._actors.push(actor);
-    }
-    actorDied(actor) {
-      for (let i = 0, len = this._actors.length; i < len; ++i) {
-        if (this._actors[i] === actor) {
-          this._corpses.push(actor);
-          this._actors.splice(i, 1);
-          return;
-        }
-      }
-    }
-    computeFov(x, y) {
-      this.fov.computeFov(x, y);
-    }
-    isInFov(x, y) {
-      if (!this.isInsideMap(x, y)) {
-        return false;
-      }
-      return this.fov.isInFov(x, y);
-    }
-    isExplored(x, y) {
-      if (!this.isInsideMap(x, y)) {
-        return false;
-      }
-      return this.fov.isExplored(x, y);
-    }
-    isWall(x, y) {
-      if (this.isInsideMap(x, y) && this._tiles[x + y * this._width].blocks) {
-        return true;
-      }
-      return false;
-    }
-    getChar(x, y) {
-      if (this.isInsideMap(x, y)) {
-        return this._tiles[x + y * this._width].glyph;
-      }
-      return Tile.BOUND.glyph;
-    }
-    getColor(x, y) {
-      if (this.isInsideMap(x, y)) {
-        return this._tiles[x + y * this._width].glyph.fcol;
-      }
-      return Color.red;
-    }
-    get width() {
-      return this._width;
-    }
-    get height() {
-      return this._height;
-    }
-    get actors() {
-      return this._actors;
-    }
-    get corpses() {
-      return this._corpses;
-    }
-  };
-
   // src/ts/utils/rng.ts
   var Rng = class {
     static randomInt(max, min = 0) {
@@ -684,7 +407,7 @@
     }
   };
 
-  // src/ts/map/generation/features.ts
+  // src/ts/level/generation/features.ts
   var _Direction = class {
     constructor(x, y) {
       this.x = x;
@@ -1050,7 +773,88 @@
     }
   };
 
-  // src/ts/map/map_builder.ts
+  // src/ts/level/level.ts
+  var Level = class {
+    constructor(width, height, tiles, actors) {
+      this._tiles = [];
+      this._actors = [];
+      this._corpses = [];
+      this._width = width;
+      this._height = height;
+      this._tiles = tiles;
+      this._actors = actors;
+    }
+    isInsideMap(x, y) {
+      if (x < 0 || x >= this._width || y < 0 || y >= this._height) {
+        return false;
+      }
+      return true;
+    }
+    isExplored(x, y) {
+      if (!this.isInsideMap(x, y)) {
+        return false;
+      }
+      return this._tiles[x + y * this.width].explored;
+    }
+    reveal(x, y) {
+      if (!this.isInsideMap(x, y)) {
+        return false;
+      }
+      this._tiles[x + y * this.width].explored = true;
+      return true;
+    }
+    addActor(actor) {
+      this._actors.push(actor);
+    }
+    blocks(x, y) {
+      if (this.isInsideMap(x, y) && this._tiles[x + y * this._width].blocks) {
+        return true;
+      }
+      return false;
+    }
+    getChar(x, y) {
+      if (this.isInsideMap(x, y)) {
+        return this._tiles[x + y * this._width].glyph;
+      }
+      return Tile.BOUND.glyph;
+    }
+    getColor(x, y) {
+      if (this.isInsideMap(x, y)) {
+        return this._tiles[x + y * this._width].glyph.fcol;
+      }
+      return Color.red;
+    }
+    actorDied(actor) {
+      for (let i = 0, len = this._actors.length; i < len; ++i) {
+        if (this._actors[i] === actor) {
+          this._corpses.push(actor);
+          this._actors.splice(i, 1);
+          return;
+        }
+      }
+    }
+    get width() {
+      return this._width;
+    }
+    get height() {
+      return this._height;
+    }
+    get actors() {
+      return this._actors;
+    }
+    get corpses() {
+      return this._corpses;
+    }
+  };
+
+  // src/ts/level/regular_level.ts
+  var RegularLevel = class extends Level {
+    constructor(width, height, tiles, actors) {
+      super(width, height, tiles, actors);
+    }
+  };
+
+  // src/ts/level/map_builder.ts
   var MapBuilder = class {
     constructor(width, height, depth) {
       this.tiles = [];
@@ -1063,7 +867,7 @@
     makeMap() {
       let tileMap = new FeatureBuilder(this.width, this.height, this.tiles, this.depth);
       tileMap.generate();
-      return new GameMap(this.width, this.height, this.tiles, this.actors);
+      return new RegularLevel(this.width, this.height, this.tiles, this.actors);
     }
     addActors(amount) {
       for (let i = 0; i < amount; ++i) {
@@ -1073,7 +877,6 @@
           x = Math.floor(Math.random() * this.width);
           y = Math.floor(Math.random() * this.height);
         } while (this.tiles[x + y * this.width].blocks);
-        this.actors.push(ActorStorage.makeActor(x, y, 1 /* dragon */, null));
       }
     }
     initWithTiles(tile) {
@@ -1101,6 +904,182 @@
     }
   };
 
+  // src/ts/level/fov.ts
+  var Point = class {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+    }
+  };
+  var Quadrant = class {
+    constructor(sector, origin) {
+      this.sector = sector;
+      this.origin = origin;
+    }
+    transfom(tile) {
+      if (this.sector == 0) {
+        return new Point(this.origin.x + tile.x, this.origin.y - tile.y);
+      } else if (this.sector == 2) {
+        return new Point(this.origin.x + tile.x, this.origin.y + tile.y);
+      } else if (this.sector == 1) {
+        return new Point(this.origin.x + tile.y, this.origin.y + tile.x);
+      } else {
+        return new Point(this.origin.x - tile.y, this.origin.y + tile.x);
+      }
+    }
+  };
+  var Row = class {
+    constructor(depth, startSlope, endSlope) {
+      this.depth = depth;
+      this.startSlope = startSlope;
+      this.endSlope = endSlope;
+    }
+    rowTiles() {
+      let tiles = new Array();
+      let minCol = Math.floor(this.depth * this.startSlope + 0.5);
+      let maxCol = Math.ceil(this.depth * this.endSlope - 0.5);
+      for (let x = minCol; x < maxCol + 1; ++x) {
+        tiles.push(new Point(x, this.depth));
+      }
+      return tiles;
+    }
+    nextRow() {
+      return new Row(this.depth + 1, this.startSlope, this.endSlope);
+    }
+  };
+  var Fov = class {
+    constructor(level, range) {
+      this._level = level;
+      this._inFov = new Array();
+      this._range = range;
+      this._radius = this._range * this._range;
+    }
+    isInFov(x, y) {
+      if (!this._level.isInsideMap(x, y)) {
+        return false;
+      }
+      let value = false;
+      this._inFov.forEach((p) => {
+        if (p.x == x && p.y == y) {
+          value = true;
+          return;
+        }
+      });
+      return value;
+    }
+    computeFov(x, y) {
+      this._inFov = [];
+      this._inFov.push(new Point(x, y));
+      for (let i = 0; i < 4; ++i) {
+        let q = new Quadrant(i, new Point(x, y));
+        this.scan(new Row(1, -1, 1), q);
+      }
+    }
+    scan(row, q) {
+      if (row.depth > this._range - 1) {
+        return;
+      }
+      if (row.startSlope >= row.endSlope) {
+        return;
+      }
+      let prevTile = null;
+      row.rowTiles().forEach((tile) => {
+        if (Math.pow(tile.x, 2) + Math.pow(tile.y, 2) > this._radius) {
+          return;
+        }
+        if (this.blocksSight(tile, q) || this.isSymmetric(row, tile)) {
+          this.reveal(tile, q);
+        }
+        if (prevTile) {
+          if (this.blocksSight(prevTile, q) && !this.blocksSight(tile, q)) {
+            row.startSlope = this.slope(tile, q);
+          }
+          if (!this.blocksSight(prevTile, q) && this.blocksSight(tile, q)) {
+            let nextRow = row.nextRow();
+            nextRow.endSlope = this.slope(tile, q);
+            this.scan(nextRow, q);
+          }
+        }
+        prevTile = tile;
+      });
+      if (prevTile) {
+        if (!this.blocksSight(prevTile, q)) {
+          this.scan(row.nextRow(), q);
+        }
+      }
+    }
+    reveal(tile, q) {
+      let converted = q.transfom(tile);
+      let revealed = this._level.reveal(converted.x, converted.y);
+      if (!revealed) {
+        return;
+      }
+      this._inFov.push(new Point(converted.x, converted.y));
+    }
+    blocksSight(tile, q) {
+      let converted = q.transfom(tile);
+      return this._level.blocks(converted.x, converted.y);
+    }
+    slope(tile, q) {
+      return (2 * tile.x - 1) / (2 * tile.y);
+    }
+    isSymmetric(row, tile) {
+      return tile.x >= row.depth * row.startSlope && tile.x <= row.depth * row.endSlope;
+    }
+  };
+
+  // src/ts/actor/actor.ts
+  var Actor = class {
+    constructor(x, y, glyph) {
+      this._x = x;
+      this._y = y;
+      this._glyph = glyph;
+      this._blocks = true;
+      this._hp = 0;
+    }
+    get x() {
+      return this._x;
+    }
+    get y() {
+      return this._y;
+    }
+    get glyph() {
+      return this._glyph;
+    }
+    get blocks() {
+      return this._blocks;
+    }
+    get hp() {
+      return this._hp;
+    }
+    set x(x) {
+      this._x = x;
+    }
+    set y(y) {
+      this._y = y;
+    }
+    set glyph(glyph) {
+      this._glyph = glyph;
+    }
+    set blocks(blocks) {
+      this._blocks = blocks;
+    }
+    set hp(hp) {
+      this._hp = hp;
+    }
+  };
+
+  // src/ts/actor/hero/hero.ts
+  var Hero = class extends Actor {
+    constructor(x, y, glyph) {
+      super(x, y, glyph);
+      this.hp = 30;
+    }
+    isPlayer() {
+      return true;
+    }
+  };
+
   // src/ts/main.ts
   var InputKey = {
     NO_INPUT: "",
@@ -1124,18 +1103,18 @@
       this.noFov = true;
       this.noCollision = true;
       this.loop = (timestamp) => {
-        let progress = timestamp - this.lastRender;
         this.update();
         this.lastRender = timestamp;
         window.requestAnimationFrame(this.loop);
       };
       this.sightRadius = 8;
       this.lastRender = 0;
-      this.currentMap = new MapBuilder(100, 100, 1).makeMap();
-      this.player = ActorStorage.makeActor(25, 25, 0 /* player */, null);
+      this.currentLevel = new MapBuilder(100, 100, 1).makeMap();
+      this.playerFov = new Fov(this.currentLevel, 8);
+      this.player = new Hero(25, 25, new Glyph("@", Color.white, Color.black));
       this.currentScreen = new PlayScreen(screenWidth, screenHeight);
-      this.currentMap.addActor(this.player);
-      this.currentMap.computeFov(this.player.x, this.player.y);
+      this.currentLevel.addActor(this.player);
+      this.playerFov.computeFov(this.player.x, this.player.y);
       window.requestAnimationFrame(this.loop);
     }
     update() {
@@ -1149,7 +1128,7 @@
         if (result.altAction) {
         }
         if (result.moved) {
-          this.currentMap.computeFov(this.player.x, this.player.y);
+          this.playerFov.computeFov(this.player.x, this.player.y);
         }
         if (result.performed) {
         }

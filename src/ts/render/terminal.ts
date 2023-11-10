@@ -1,6 +1,5 @@
 import Glyph from "./glyph";
 import Color from "./color";
-import CharCode from "./charcode";
 
 export default class Terminal {
 	private width: number;
@@ -71,15 +70,13 @@ export default class Terminal {
 		document.dispatchEvent(this.imgLoaded);
 	}
 
-	/** fills the terminal with black color */
+	//fills the terminal with black color 
 	public clear(): void {
 		this.ctx!.fillStyle = "#000000";
 		this.ctx!.fillRect(0, 0, this.widthPixels, this.heightPixels);
 	}
 
-	/**
-	 * Writes one glyph to [x, y]
-	 */
+	// writes one glyph to [x, y]
 	public putChar(glyph: Glyph, x: number, y: number): void {
 		if (x < 0 || x > this.width) throw new RangeError(`x:${x} must be within range [0,${this.width}]`);
 		if (y < 0 || y > this.height) throw new RangeError(`y:${y} must be within range [0,${this.height}]`);
@@ -98,7 +95,7 @@ export default class Terminal {
 	// 	}
 	// };
 
-	/** Renders only modified glyphs since the last call. */
+	// Renders only modified glyphs since the last call. 
 	public render(): void {
 		//let count: number = 0;
 		for (let x: number = 0; x < this.width; ++x) {

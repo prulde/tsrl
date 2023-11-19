@@ -23,7 +23,7 @@ export default class Monster extends Actor {
 		return this.breed.defense;
 	};
 
-	public isPlayer(): boolean {
+	public override isPlayer(): boolean {
 		return false;
 	};
 }

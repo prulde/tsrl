@@ -1,16 +1,15 @@
 import Terminal from "./render/terminal";
 import Glyph from "./render/glyph";
 import Color from "./render/color";
-import GameScreen from "./screen/screen";
+import Screen from "./screen/screen";
 import PlayScreen from "./screen/play_screen";
 import Actor from "./actor/actor";
 import { Action, ActionResult } from "./action/action";
 import Level from "./level/level";
 import MapBuilder from "./level/map_builder";
-import Tile from "./level/tile";
-import Fov from "./level/fov";
-import RegularLevel from "./level/regular_level";
 import Hero from "./actor/hero/hero";
+import Config from "./config";
+import { Fov } from "./level/fov";
 
 const InputKey = {
 	NO_INPUT: "",
@@ -27,36 +26,38 @@ const InputKey = {
 };
 
 let inputKey: string = InputKey.NO_INPUT;
-let screenWidth: number = 100;
-let screenHeight: number = 100;
 // let fpsBar = document.createElement("p");
 // document.querySelector("body")!.appendChild(fpsBar);
 
 // game state and loop 
 class Game {
-	public sightRadius: number;
+	public config: Config;
+	public terminal: Terminal;
 	public player: Actor;
-	public currentScreen: GameScreen;
-	public currentLevel: RegularLevel;
-	public playerFov: Fov;
+	public currentScreen: Screen;
+	public currentLevel: Level;
 	private lastRender: number;
 
-	// debug 
-	public noFov: boolean = true;
-	public noCollision: boolean = true;
-
 	constructor() {
-		this.sightRadius = 8;
+		this.config = new Config();
 		this.lastRender = 0;
 
 		this.currentLevel = new MapBuilder(100, 100, 1).makeMap();
-		this.playerFov = new Fov(this.currentLevel, 8);
 		this.player = new Hero(25, 25, new Glyph("@", Color.white, Color.black));
-		this.currentScreen = new PlayScreen(screenWidth, screenHeight);
+		this.currentScreen = new PlayScreen(this.config.screenWidth, this.config.screenHeight);
 
 		this.currentLevel.addActor(this.player);
-		this.playerFov.computeFov(this.player.x, this.player.y);
+		this.currentLevel.computeFov(this.player.position, this.config.sightRadius, Fov.RecursiveShadowcasting);
 
+		// terminal
+		this.terminal = new Terminal(this.config.screenWidth, this.config.screenHeight, "data/cp437_16x16_test.png", 16, 16);
+		document.addEventListener("imgLoaded", this.initGame.bind(this));
+	}
+
+	// sync image src load 
+	private initGame(e: CustomEventInit): void {
+		document.removeEventListener("imgLoaded", this.initGame);
+		document.addEventListener("keydown", kbInput, false);
 		// start game loop 
 		window.requestAnimationFrame(this.loop);
 	}
@@ -73,7 +74,7 @@ class Game {
 
 			}
 			if (result.moved) {
-				this.playerFov.computeFov(this.player.x, this.player.y);
+				this.currentLevel.computeFov(this.player.position, this.config.sightRadius, Fov.RecursiveShadowcasting);
 				//this.currentScreen.moveCamera(this.player.x, this.player.y);
 			}
 			if (result.performed) {
@@ -83,13 +84,13 @@ class Game {
 
 		inputKey = InputKey.NO_INPUT;
 
-		this.currentScreen.render(this.player.x, this.player.y);
+		this.currentScreen.render(this.player.position);
 	}
 
 	private loop = (timestamp: number): void => {
 		// let progress: number = timestamp - this.lastRender;
-		//fpsBar.innerText = (1 / (progress / 1000)).toFixed(4);
-		//if (inputKey !== InputKey.NO_INPUT)
+		// fpsBar.innerText = (1 / (progress / 1000)).toFixed(4);
+		// if (inputKey !== InputKey.NO_INPUT)
 		this.update();
 
 		this.lastRender = timestamp;
@@ -97,19 +98,7 @@ class Game {
 	};
 }
 
-let terminal: Terminal = new Terminal(screenWidth, screenHeight, "data/cp437_16x16_test.png", 16, 16);
-let game: Game;
-
-document.addEventListener("imgLoaded", initGame.bind(this));
-
-// sync image src load 
-function initGame(e: CustomEventInit): void {
-
-	game = new Game();
-
-	document.removeEventListener("imgLoaded", initGame);
-	document.addEventListener("keydown", kbInput, false);
-}
+let game: Game = new Game();
 
 function kbInput(e: KeyboardEvent): void {
 	switch (e.key) {
@@ -164,4 +153,4 @@ function kbInput(e: KeyboardEvent): void {
 	}
 }
 
-export { InputKey, game, terminal };
+export { InputKey, game };

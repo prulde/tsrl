@@ -1,32 +1,43 @@
-import Level from "./level";
+import Position from "../util/position";
 
-class Point {
-	public readonly x: number;
-	public readonly y: number;
+interface FovLevel {
+	blocksLOS(position: Position): boolean;
+	reveal(position: Position): boolean;
+}
 
-	constructor(x: number, y: number) {
-		this.x = x;
-		this.y = y;
+enum Fov {
+	RecursiveShadowcasting
+}
+
+function computeFov(level: FovLevel, position: Position, range: number, fov: Fov): void {
+	switch (fov) {
+		case Fov.RecursiveShadowcasting:
+			computeFovRecursiveShadowcasting(level, position, range);
+			break;
+
+		default:
+			break;
 	}
 }
 
+
 class Quadrant {
 	public readonly sector: number;
-	public readonly origin: Point;
-	constructor(sector: number, origin: Point) {
+	public readonly origin: Position;
+	constructor(sector: number, origin: Position) {
 		this.sector = sector;
 		this.origin = origin;
 	}
 
-	public transfom(tile: Point): Point {
+	public transform(tile: Position): Position {
 		if (this.sector == 0) {
-			return new Point(this.origin.x + tile.x, this.origin.y - tile.y);
+			return new Position(this.origin.x + tile.x, this.origin.y - tile.y);
 		} else if (this.sector == 2) {
-			return new Point(this.origin.x + tile.x, this.origin.y + tile.y);
+			return new Position(this.origin.x + tile.x, this.origin.y + tile.y);
 		} else if (this.sector == 1) {
-			return new Point(this.origin.x + tile.y, this.origin.y + tile.x);
+			return new Position(this.origin.x + tile.y, this.origin.y + tile.x);
 		} else {
-			return new Point(this.origin.x - tile.y, this.origin.y + tile.x); // west
+			return new Position(this.origin.x - tile.y, this.origin.y + tile.x); // west
 		}
 	}
 }
@@ -42,12 +53,12 @@ class Row {
 		this.endSlope = endSlope;
 	}
 
-	public rowTiles(): Array<Point> {
-		let tiles: Array<Point> = new Array();
+	public rowTiles(): Array<Position> {
+		let tiles: Array<Position> = new Array();
 		let minCol: number = Math.floor((this.depth * this.startSlope) + 0.5);
 		let maxCol: number = Math.ceil((this.depth * this.endSlope) - 0.5);
 		for (let x: number = minCol; x < maxCol + 1; ++x) {
-			tiles.push(new Point(x, this.depth));
+			tiles.push(new Position(x, this.depth));
 		}
 		return tiles;
 	}
@@ -57,102 +68,69 @@ class Row {
 	}
 }
 
-export default class Fov {
-	private _inFov: Array<Point>;
-	private _range: number;
-	private _radius: number;
-	private _level: Level;
+function computeFovRecursiveShadowcasting(level: FovLevel, position: Position, range: number): void {
+	let radius: number = Math.pow(range, 2);
 
-	constructor(level: Level, range: number) {
-		this._level = level;
-		this._inFov = new Array<Point>();
-		this._range = range;
-		this._radius = this._range * this._range;
-	}
+	level.reveal(Position.from(position));
 
-	public isInFov(x: number, y: number): boolean {
-		if (!this._level.isInsideMap(x, y)) {
-			return false;
-		}
-		let value: boolean = false;
-		this._inFov.forEach((p: Point): void => {
-			if (p.x == x && p.y == y) {
-				value = true;
-				return;
-			}
-		});
-		return value;
-	}
-
-	public computeFov(x: number, y: number): void {
-		this._inFov = [];
-		this._inFov.push(new Point(x, y));
-
-		for (let i: number = 0; i < 4; ++i) {
-			let q: Quadrant = new Quadrant(i, new Point(x, y));
-			this.scan(new Row(1, -1.0, 1.0), q);
-		}
-	}
-
-	private scan(row: Row, q: Quadrant): void {
-		// exclude 1 point perpendicular to player
-		if (row.depth > this._range - 1) {
-			return;
-		}
-
-		if (row.startSlope >= row.endSlope) {
-			return;
-		}
-
-		let prevTile: Point | null = null;
-
-		row.rowTiles().forEach((tile: Point): void => {
-			if ((Math.pow(tile.x, 2) + Math.pow(tile.y, 2)) > this._radius) {
-				return;
-			}
-
-			if (this.blocksSight(tile, q) || this.isSymmetric(row, tile)) {
-				this.reveal(tile, q);
-			}
-			if (prevTile) {
-				if (this.blocksSight(prevTile, q) && !this.blocksSight(tile, q)) {
-					row.startSlope = this.slope(tile, q);
-				}
-				if (!this.blocksSight(prevTile, q) && this.blocksSight(tile, q)) {
-					let nextRow: Row = row.nextRow();
-					nextRow.endSlope = this.slope(tile, q);
-					this.scan(nextRow, q);
-				}
-			}
-			prevTile = tile;
-		});
-
-		if (prevTile) {
-			if (!this.blocksSight(prevTile, q)) {
-				this.scan(row.nextRow(), q);
-			}
-		}
-	}
-
-	private reveal(tile: Point, q: Quadrant): void {
-		let converted: Point = q.transfom(tile);
-		let revealed: boolean = this._level.reveal(converted.x, converted.y);
-		if (!revealed) {
-			return;
-		}
-		this._inFov.push(new Point(converted.x, converted.y));
-	}
-
-	private blocksSight(tile: Point, q: Quadrant): boolean {
-		let converted: Point = q.transfom(tile);
-		return this._level.blocks(converted.x, converted.y);
-	}
-
-	private slope(tile: Point, q: Quadrant): number {
-		return ((2 * tile.x - 1) / (2 * tile.y));
-	}
-
-	private isSymmetric(row: Row, tile: Point): boolean {
-		return ((tile.x >= row.depth * row.startSlope) && (tile.x <= row.depth * row.endSlope));
+	for (let i: number = 0; i < 4; ++i) {
+		let q: Quadrant = new Quadrant(i, Position.from(position));
+		scan(new Row(1, -1.0, 1.0), q, level, range, radius);
 	}
 }
+
+function scan(row: Row, q: Quadrant, level: FovLevel, range: number, radius: number): void {
+	// exclude 1 position perpendicular to player
+	if (row.depth > range - 1) {
+		return;
+	}
+
+	if (row.startSlope >= row.endSlope) {
+		return;
+	}
+
+	let prevTile: Position | null = null;
+
+	row.rowTiles().forEach((tile: Position): void => {
+		if ((Math.pow(tile.x, 2) + Math.pow(tile.y, 2)) > radius) {
+			return;
+		}
+
+		let currentTileBlocked: boolean = level.blocksLOS(q.transform(tile));
+
+		if (currentTileBlocked || isSymmetric(row, tile)) {
+			level.reveal(q.transform(tile));
+		}
+
+		if (prevTile) {
+			let prevTileBlocked: boolean = level.blocksLOS(q.transform(prevTile));
+
+			if (prevTileBlocked && !currentTileBlocked) {
+				row.startSlope = slope(tile, q);
+			}
+			if (!prevTileBlocked && currentTileBlocked) {
+				let nextRow: Row = row.nextRow();
+				nextRow.endSlope = slope(tile, q);
+				scan(nextRow, q, level, range, radius);
+			}
+		}
+		prevTile = tile;
+	});
+
+	if (prevTile) {
+		let prevTileBlocked: boolean = level.blocksLOS(q.transform(prevTile));
+		if (!prevTileBlocked) {
+			scan(row.nextRow(), q, level, range, radius);
+		}
+	}
+}
+
+function slope(tile: Position, q: Quadrant): number {
+	return ((2 * tile.x - 1) / (2 * tile.y));
+}
+
+function isSymmetric(row: Row, tile: Position): boolean {
+	return ((tile.x >= row.depth * row.startSlope) && (tile.x <= row.depth * row.endSlope));
+}
+
+export { FovLevel, Fov, computeFov };

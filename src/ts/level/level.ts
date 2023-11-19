@@ -1,13 +1,15 @@
 import Actor from "../actor/actor";
 import Color from "../render/color";
 import Glyph from "../render/glyph";
-import Fov from "./fov";
+import Position from "../util/position";
+import { Fov, FovLevel, computeFov } from "./fov";
 import Tile from "./tile";
 
-export default class Level {
+export default class Level implements FovLevel {
 	private _width: number;
 	private _height: number;
 	private _tiles: Tile[] = [];
+	private _inFov: Position[] = [];
 	private _actors: Actor[] = [];
 	private _corpses: Actor[] = [];
 
@@ -18,49 +20,82 @@ export default class Level {
 		this._actors = actors;
 	}
 
-	public isInsideMap(x: number, y: number): boolean {
-		if (x < 0 || x >= this._width || y < 0 || y >= this._height) {
+	public isInsideMap(position: Position): boolean {
+		if (position.x < 0 || position.x >= this._width || position.y < 0 || position.y >= this._height) {
 			return false;
 		}
 		return true;
 	}
 
-	public isExplored(x: number, y: number): boolean {
-		if (!this.isInsideMap(x, y)) {
+	public isExplored(position: Position): boolean {
+		if (!this.isInsideMap(position)) {
 			return false;
 		}
-		return this._tiles[x + y * this.width].explored;
+		return this._tiles[position.x + position.y * this.width].explored;
 	}
 
-	public reveal(x: number, y: number): boolean {
-		if (!this.isInsideMap(x, y)) {
+	public computeFov(position: Position, range: number, fov: Fov): void {
+		this._inFov = [];
+		computeFov(this, position, range, fov);
+	}
+
+	// fov map
+	public blocksLOS(position: Position): boolean {
+		if (this.isInsideMap(position) && this._tiles[position.x + position.y * this._width].blocks) { // Tile.BOUNDS
+			return true;
+		}
+		return false;
+	}
+
+	public reveal(position: Position): boolean {
+		if (!this.isInsideMap(position)) {
 			return false;
 		}
-		this._tiles[x + y * this.width].explored = true;
+		this._tiles[position.x + position.y * this.width].explored = true;
+		this._inFov.push(position);
 		return true;
+	}
+
+
+	public isInFov(position: Position): boolean {
+		if (!this.isInsideMap(position)) {
+			return false;
+		}
+		let value: boolean = false;
+		this._inFov.forEach((p: Position): void => {
+			if (p.x == position.x && p.y == position.y) {
+				value = true;
+				return;
+			}
+		});
+		return value;
 	}
 
 	public addActor(actor: Actor): void {
 		this._actors.push(actor);
 	}
 
-	public blocks(x: number, y: number): boolean {
-		if (this.isInsideMap(x, y) && this._tiles[x + y * this._width].blocks) { // Tile.BOUNDS
-			return true;
-		}
-		return false;
-	}
 
-	public getChar(x: number, y: number): Glyph {
-		if (this.isInsideMap(x, y)) {
-			return this._tiles[x + y * this._width].glyph;
+
+	// public containsActor(x: number, y: number): Actor | null {
+	// 	for (const actor of this._actors) {
+	// 		if (actor.blocks && actor.x === x && actor.y === y) {
+	// 			return actor;
+	// 		}
+	// 	}
+	// 	return null;
+	// }
+
+	public getChar(pos: Position): Glyph {
+		if (this.isInsideMap(pos)) {
+			return this._tiles[pos.x + pos.y * this._width].glyph;
 		}
 		return Tile.BOUND.glyph;
 	}
 
-	public getColor(x: number, y: number): Color {
-		if (this.isInsideMap(x, y)) {
-			return this._tiles[x + y * this._width].glyph.fcol;
+	public getColor(pos: Position): Color {
+		if (this.isInsideMap(pos)) {
+			return this._tiles[pos.x + pos.y * this._width].glyph.fcol;
 		}
 		return Color.red;
 	}

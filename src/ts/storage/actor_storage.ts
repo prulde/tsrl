@@ -1,6 +1,5 @@
 import Actor from "../actor/actor";
 import Breed from "../actor/breed";
-import { terminal } from "../main";
 import Color from "../render/color";
 import Glyph from "../render/glyph";
 

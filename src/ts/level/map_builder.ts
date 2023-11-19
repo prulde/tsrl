@@ -6,7 +6,6 @@ import RoomAddition from "./generation/room_addition";
 import Level from "./level";
 import Tile from "./tile";
 import FeatureBuilder from "./generation/features";
-import RegularLevel from "./regular_level";
 
 // use strategy?
 export default class MapBuilder {
@@ -23,7 +22,7 @@ export default class MapBuilder {
 		this.depth = depth;
 	}
 
-	public makeMap(): RegularLevel {
+	public makeMap(): Level {
 		//this.populate(0.05, Tile.WALL);
 		//this.initWithTiles(Tile.WALL);
 		//let catacombs: RoomAddition = new RoomAddition(this.width, this.height, this.tiles, this.depth);
@@ -35,7 +34,7 @@ export default class MapBuilder {
 		//this.addBoundaries();
 		let tileMap: FeatureBuilder = new FeatureBuilder(this.width, this.height, this.tiles, this.depth);
 		tileMap.generate();
-		return new RegularLevel(this.width, this.height, this.tiles, this.actors);
+		return new Level(this.width, this.height, this.tiles, this.actors);
 	}
 
 	private addActors(amount: number): void {

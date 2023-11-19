@@ -7,7 +7,7 @@ export default class Hero extends Actor {
 		this.hp = 30;
 	}
 
-	public isPlayer(): boolean {
+	public override isPlayer(): boolean {
 		return true;
 	}
 }

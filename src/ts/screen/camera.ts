@@ -3,8 +3,8 @@ import { game } from "../main";
 export default class Camera {
 	private _width: number;
 	private _height: number;
-	private _camerax: number;
-	private _cameray: number;
+	private _camerax: number = 1;
+	private _cameray: number = 1;
 
 	constructor(width: number, height: number) {
 		this._width = width;
@@ -13,7 +13,7 @@ export default class Camera {
 		this._cameray = 1;
 	}
 
-	moveCamera(targetx: number, targety: number): void {
+	public moveCamera(targetx: number, targety: number): void {
 		let x: number = targetx - (this._width / 2);
 		let y: number = targety - (this._height / 2);
 
@@ -34,7 +34,7 @@ export default class Camera {
 		this._cameray = y;
 	}
 
-	toCameraCoordinates(x: number, y: number) {
+	public toCameraCoordinates(x: number, y: number) {
 		let newx: number = x - this._camerax;
 		let newy: number = y - this._cameray;
 
@@ -46,14 +46,14 @@ export default class Camera {
 		return { _x: x, _y: y, inBounds: true };
 	}
 
-	isInsideViewport(x: number, y: number): boolean {
+	public isInsideViewport(x: number, y: number): boolean {
 		///???????
 		if (x < 1 || y < 1 || x >= this._width + 1 || y >= this._height + 1)
 			return false;
 		return true;
 	}
 
-	getGlobalCoordinates(x: number, y: number) {
+	public getGlobalCoordinates(x: number, y: number) {
 		///???????
 		if (x < 1 || y < 1 || x >= this._width + 1 || y >= this._height + 1)
 			return { x: x, y: y, inBounds: false };

@@ -1,26 +1,29 @@
-import { Action, WalkAction, RestAction } from "../action/action";
+import { Action } from "../action/action";
 import Actor from "../actor/actor";
-import { InputKey, game, terminal } from "../main";
+import { InputKey, game } from "../main";
 import Tile from "../level/tile";
 import Camera from "./camera";
-import GameScreen from "./screen";
+import Screen from "./screen";
 import Level from "../level/level";
+import WalkAction from "../action/walk_action";
+import RestAction from "../action/rest_action";
+import Position from "../util/position";
 
-export default class PlayScreen implements GameScreen {
+export default class PlayScreen implements Screen {
 	private camera: Camera;
 
 	constructor(width: number, height: number) {
 		this.camera = new Camera(width, height);
 	}
 
-	public render(x: number, y: number): void {
-		this.camera.moveCamera(x, y);
+	public render(position: Position): void {
+		this.camera.moveCamera(position.x, position.y);
 
 		this.drawMap();
 		this.drawCorpses();
 		this.drawActors();
 
-		terminal.render();
+		game.terminal.render();
 	}
 
 	private drawMap(): void {
@@ -28,21 +31,22 @@ export default class PlayScreen implements GameScreen {
 			for (let j: number = 0; j < this.camera.height; ++j) {
 				let x: number = this.camera.camerax + i;
 				let y: number = this.camera.cameray + j;
+				let position = new Position(x, y);
 
-				if (game.noFov) {
-					terminal.putChar(game.currentLevel.getChar(x, y), i, j);
+				if (game.config.noFov) {
+					game.terminal.putChar(game.currentLevel.getChar(position), i, j);
 					continue;
 				}
 
-				if (game.playerFov.isInFov(x, y)) {
-					terminal.putChar(game.currentLevel.getChar(x, y), i, j);
+				if (game.currentLevel.isInFov(position)) {
+					game.terminal.putChar(game.currentLevel.getChar(position), i, j);
 				}
-				else if (game.currentLevel.isExplored(x, y)) {
-					terminal.putChar(Tile.FOG.glyph, i, j);
+				else if (game.currentLevel.isExplored(position)) {
+					game.terminal.putChar(Tile.FOG.glyph, i, j);
 				}
 				// because i dont use clear() for render
 				else {
-					terminal.putChar(Tile.FOG.glyph, i, j);
+					game.terminal.putChar(Tile.FOG.glyph, i, j);
 				}
 			}
 		}
@@ -53,23 +57,23 @@ export default class PlayScreen implements GameScreen {
 	}
 
 	private drawActors(): void {
-		const mapActors: Actor[] = game.currentLevel.actors;
-		for (const actor of mapActors) {
-			const point = this.camera.toCameraCoordinates(actor.x, actor.y);
+		const levelActors: Actor[] = game.currentLevel.actors;
+		for (const actor of levelActors) {
+			const point = this.camera.toCameraCoordinates(actor.position.x, actor.position.y);
 
-			if (game.noFov && point.inBounds) {
-				terminal.putChar(actor.glyph, point._x, point._y);
+			if (game.config.noFov && point.inBounds) {
+				game.terminal.putChar(actor.glyph, point._x, point._y);
 				continue;
 			}
 
 
-			if (game.playerFov.isInFov(actor.x, actor.y)) {
+			if (game.currentLevel.isInFov(actor.position)) {
 
 
 				if (point.inBounds) {
-					terminal.putChar(actor.glyph, point._x, point._y);
+					game.terminal.putChar(actor.glyph, point._x, point._y);
 				} else {
-					terminal.putChar(Tile.FOG.glyph, point._x, point._y);
+					game.terminal.putChar(Tile.FOG.glyph, point._x, point._y);
 				}
 			}
 
@@ -81,28 +85,28 @@ export default class PlayScreen implements GameScreen {
 			return null;
 		}
 		if (inputKey === InputKey.MN) {
-			return new WalkAction(0, -1);
+			return new WalkAction(new Position(0, -1));
 		}
 		if (inputKey === InputKey.MS) {
-			return new WalkAction(0, 1);
+			return new WalkAction(new Position(0, 1));
 		}
 		if (inputKey === InputKey.MW) {
-			return new WalkAction(-1, 0);
+			return new WalkAction(new Position(-1, 0));
 		}
 		if (inputKey === InputKey.ME) {
-			return new WalkAction(1, 0);
+			return new WalkAction(new Position(1, 0));
 		}
 		if (inputKey === InputKey.MNE) {
-			return new WalkAction(1, -1);
+			return new WalkAction(new Position(1, -1));
 		}
 		if (inputKey === InputKey.MNW) {
-			return new WalkAction(-1, -1);
+			return new WalkAction(new Position(-1, -1));
 		}
 		if (inputKey === InputKey.MSE) {
-			return new WalkAction(1, 1);
+			return new WalkAction(new Position(1, 1));
 		}
 		if (inputKey === InputKey.MSW) {
-			return new WalkAction(-1, 1);
+			return new WalkAction(new Position(-1, 1));
 		}
 		if (inputKey === InputKey.SKIP) {
 			return new RestAction();

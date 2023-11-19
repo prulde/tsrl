@@ -17,7 +17,7 @@ export default class Tile {
 
 	private readonly _glyph: Glyph;
 	private readonly _tintedGlyph: Glyph;
-	private readonly _blocks: boolean;
+	private _blocks: boolean;
 	private _explored: boolean = false;
 
 	constructor(glyph: Glyph, blocks: boolean) {

@@ -1,5 +1,5 @@
 import Tile from "../tile";
-import Rng from "../../utils/rng";
+import Rng from "../../util/rng";
 
 class Direction {
 	public x: number;

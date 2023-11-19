@@ -1,15 +1,14 @@
 import Glyph from "../render/glyph";
+import Position from "../util/position";
 
 export default abstract class Actor {
-	private _x: number;
-	private _y: number;
+	private _position: Position;
 	private _glyph: Glyph;
 	private _hp: number;
 	private _blocks: boolean;
 
 	constructor(x: number, y: number, glyph: Glyph) {
-		this._x = x;
-		this._y = y;
+		this._position = new Position(x, y);
 		this._glyph = glyph;
 		this._blocks = true;
 		this._hp = 0;
@@ -17,12 +16,8 @@ export default abstract class Actor {
 
 	public abstract isPlayer(): boolean;
 
-	get x(): number {
-		return this._x;
-	}
-
-	get y(): number {
-		return this._y;
+	get position(): Position {
+		return this._position;
 	}
 
 	get glyph(): Glyph {
@@ -37,12 +32,8 @@ export default abstract class Actor {
 		return this._hp;
 	}
 
-	set x(x: number) {
-		this._x = x;
-	}
-
-	set y(y: number) {
-		this._y = y;
+	set position(pos: Position) {
+		this._position = pos;
 	}
 
 	set glyph(glyph: Glyph) {

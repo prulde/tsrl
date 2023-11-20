@@ -1,6 +1,92 @@
 "use strict";
 (() => {
-  // src/ts/render/color.ts
+  // src/ts/engine/action/action.ts
+  var ActionResult = class {
+    constructor(performed, moved, altAction, altScreen) {
+      this._performed = performed;
+      this._moved = moved;
+      this._altAction = altAction;
+      this._altScreen = altScreen;
+    }
+    get performed() {
+      return this._performed;
+    }
+    get moved() {
+      return this._moved;
+    }
+    get altAction() {
+      return this._altAction;
+    }
+    get altScreen() {
+      return this._altScreen;
+    }
+  };
+  var Action = class {
+  };
+
+  // src/ts/engine/utils/position.ts
+  var Position = class {
+    constructor(x, y) {
+      this._x = x;
+      this._y = y;
+    }
+    static add(a, b) {
+      return new Position(a.x + b.x, a.y + b.y);
+    }
+    static mul(a, b) {
+      return new Position(a.x * b.x, a.y * b.y);
+    }
+    static from(position) {
+      return new Position(position.x, position.y);
+    }
+    equals(position) {
+      if (this._x === position.x && this._y === position.y)
+        return true;
+      return false;
+    }
+    get x() {
+      return this._x;
+    }
+    get y() {
+      return this._y;
+    }
+  };
+
+  // src/ts/engine/actor/actor.ts
+  var Actor = class {
+    constructor(x, y, glyph) {
+      this._position = new Position(x, y);
+      this._glyph = glyph;
+      this._blocks = true;
+      this._hp = 0;
+    }
+    get position() {
+      return this._position;
+    }
+    get glyph() {
+      return this._glyph;
+    }
+    get blocks() {
+      return this._blocks;
+    }
+    get hp() {
+      return this._hp;
+    }
+    set position(pos) {
+      this._position = pos;
+    }
+    set glyph(glyph) {
+      this._glyph = glyph;
+    }
+    set blocks(blocks) {
+      this._blocks = blocks;
+    }
+    set hp(hp) {
+      this._hp = hp;
+    }
+  };
+
+  // src/ts/engine/render/color.ts
   var _Color = class {
     constructor(r, g, b) {
       this.r = r;
@@ -54,390 +140,7 @@
   Color.pink = new _Color(255, 0, 127);
   Color.crimson = new _Color(255, 0, 63);
 
-  // src/ts/render/terminal.ts
-  var Terminal = class {
-    constructor(width, height, tilesetUrl, stepx, stepy) {
-      this.cachedFonts = /* @__PURE__ */ new Map();
-      this.glyphs = [];
-      this.changedGlyphs = [];
-      this.width = width;
-      this.height = height;
-      this.stepx = stepx;
-      this.stepy = stepy;
-      this.widthPixels = width * stepx;
-      this.heightPixels = height * stepy;
-      this.canvas = document.createElement("canvas");
-      this.canvas.width = this.widthPixels;
-      this.canvas.height = this.heightPixels;
-      document.body.appendChild(this.canvas);
-      this.ctx = this.canvas.getContext("2d", { alpha: false, willReadFrequently: true });
-      this.ctx.imageSmoothingEnabled = false;
-      this.imgLoaded = new CustomEvent("imgLoaded");
-      this.tileset = new Image();
-      this.tileset.onload = () => this.tilesetLoaded();
-      this.tileset.src = tilesetUrl;
-    }
-    makeColoredCanvas(fontColor) {
-      let canvas = document.createElement("canvas");
-      canvas.width = this.widthPixels;
-      canvas.height = this.heightPixels;
-      let ctx = canvas.getContext("2d", { willReadFrequently: true });
-      ctx.drawImage(this.tileset, 0, 0);
-      ctx.globalCompositeOperation = "source-atop";
-      ctx.fillStyle = "rgb(" + fontColor.r + ", " + fontColor.g + ", " + fontColor.b + ")";
-      ctx.fillRect(0, 0, this.stepx * 16, this.stepy * 16);
-      return canvas;
-    }
-    tilesetLoaded() {
-      Color.colors.forEach((color) => {
-        this.cachedFonts.set(color, this.makeColoredCanvas(color));
-      });
-      document.dispatchEvent(this.imgLoaded);
-    }
-    //fills the terminal with black color 
-    clear() {
-      this.ctx.fillStyle = "#000000";
-      this.ctx.fillRect(0, 0, this.widthPixels, this.heightPixels);
-    }
-    // writes one glyph to [x, y]
-    putChar(glyph, x, y) {
-      if (x < 0 || x > this.width)
-        throw new RangeError(`x:${x} must be within range [0,${this.width}]`);
-      if (y < 0 || y > this.height)
-        throw new RangeError(`y:${y} must be within range [0,${this.height}]`);
-      this.changedGlyphs[x + y * this.width] = glyph;
-    }
-    /** @todo */
-    // public write(str: string, x: number, y: number, fcol: Color, bcol: Color) {
-    // 	if (x + str.length > this.width) throw new RangeError(`x+string.lenght:${y} must be less than ${this.height}]`);
-    // 	if (x < 0 || x >= this.width) throw new RangeError(`x:${x} must be within range [0,${this.width}]`);
-    // 	if (y < 0 || y >= this.height) throw new RangeError(`y:${y} must be within range [0,${this.height}]`);
-    // 	for (let i: number = 0; i < str.length; i++) {
-    // 		this.putChar(str.charAt(i), x + i, y);
-    // 	}
-    // };
-    // Renders only modified glyphs since the last call. 
-    render() {
-      for (let x = 0; x < this.width; ++x) {
-        for (let y = 0; y < this.height; ++y) {
-          let glyph = this.changedGlyphs[x + y * this.width];
-          if (glyph === null || glyph === void 0)
-            continue;
-          if (this.changedGlyphs[x + y * this.width] == this.glyphs[x + y * this.width])
-            continue;
-          let char = glyph.char;
-          let sx = Math.floor(char % this.stepx) * this.stepx;
-          let sy = Math.floor(char / this.stepx) * this.stepy;
-          this.ctx.fillStyle = "rgb(" + glyph.bcol.r + ", " + glyph.bcol.g + ", " + glyph.bcol.b + ")";
-          this.ctx.fillRect(x * this.stepx, y * this.stepy, this.stepx, this.stepy);
-          let color = this.cachedFonts.get(glyph.fcol);
-          if (color === void 0) {
-            throw new TypeError(`${glyph.fcol} is undefined`);
-          }
-          this.ctx.drawImage(color, sx, sy, this.stepx, this.stepy, x * this.stepx, y * this.stepy, this.stepx, this.stepy);
-          this.glyphs[x + y * this.width] = glyph;
-          this.changedGlyphs[x + y * this.width] = null;
-        }
-      }
-    }
-  };
-
-  // src/ts/render/glyph.ts
-  var Glyph = class {
-    constructor(glyph, fcolor, bcolor) {
-      if (typeof glyph === "string") {
-        glyph = glyph.charCodeAt(0);
-      }
-      ;
-      this._glyph = glyph;
-      this._fcolor = fcolor;
-      this._bcolor = bcolor;
-    }
-    get fcol() {
-      return this._fcolor;
-    }
-    get bcol() {
-      return this._bcolor;
-    }
-    get char() {
-      return this._glyph;
-    }
-  };
-
-  // src/ts/level/tile.ts
-  var _Tile = class {
-    constructor(glyph, blocks) {
-      this._explored = false;
-      this._glyph = glyph;
-      this._tintedGlyph = new Glyph(this._glyph.char, Color.makeDarker(this._glyph.fcol, 0.5), this._glyph.bcol);
-      this._blocks = blocks;
-    }
-    get glyph() {
-      return this._glyph;
-    }
-    get tintedGlyph() {
-      return this._tintedGlyph;
-    }
-    get blocks() {
-      return this._blocks;
-    }
-    get explored() {
-      return this._explored;
-    }
-    set explored(explored) {
-      this._explored = explored;
-    }
-  };
-  var Tile = _Tile;
-  Tile.GRASS = new _Tile(new Glyph(".", Color.green, Color.black), false);
-  Tile.WALL = new _Tile(new Glyph("#", Color.grey, Color.black), true);
-  // dont delete
-  Tile.FOG = new _Tile(new Glyph("#", Color.black, Color.black), false);
-  Tile.BOUND = new _Tile(new Glyph("X", Color.red, Color.black), true);
-  Tile.FLOOR = new _Tile(new Glyph(".", Color.grey, Color.black), false);
-  Tile.DOOR = new _Tile(new Glyph("+", Color.amber, Color.black), false);
-  Tile.OPEN_DOOR = new _Tile(new Glyph("/", Color.amber, Color.black), false);
-  Tile.TEST_DOOR = new _Tile(new Glyph("#", new Color(150, 80, 0), Color.black), true);
-  Tile.TEST_WALL = new _Tile(new Glyph("#", new Color(0, 120, 0), Color.black), true);
-  Tile.TEST_FLOOR = new _Tile(new Glyph("#", Color.darkestGrey, Color.black), false);
-
-  // src/ts/screen/camera.ts
-  var Camera = class {
-    constructor(width, height) {
-      this._camerax = 1;
-      this._cameray = 1;
-      this._width = width;
-      this._height = height;
-      this._camerax = 1;
-      this._cameray = 1;
-    }
-    moveCamera(targetx, targety) {
-      let x = targetx - this._width / 2;
-      let y = targety - this._height / 2;
-      if (x == this._camerax && y == this._cameray) {
-        return;
-      }
-      if (x < 0)
-        x = 0;
-      if (y < 0)
-        y = 0;
-      if (x > game.currentLevel.width - this._width)
-        x = game.currentLevel.width - this._width;
-      if (y > game.currentLevel.height - this._height)
-        y = game.currentLevel.height - this._height;
-      this._camerax = x;
-      this._cameray = y;
-    }
-    toCameraCoordinates(x, y) {
-      let newx = x - this._camerax;
-      let newy = y - this._cameray;
-      if (newx < 0 || newy < 0 || newx >= this._width || newy >= this._height)
-        return { _x: x, _y: y, inBounds: false };
-      x = newx;
-      y = newy;
-      return { _x: x, _y: y, inBounds: true };
-    }
-    isInsideViewport(x, y) {
-      if (x < 1 || y < 1 || x >= this._width + 1 || y >= this._height + 1)
-        return false;
-      return true;
-    }
-    getGlobalCoordinates(x, y) {
-      if (x < 1 || y < 1 || x >= this._width + 1 || y >= this._height + 1)
-        return { x, y, inBounds: false };
-      x += this._camerax;
-      y += this._cameray;
-      return { _x: x, _y: y, inBounds: true };
-    }
-    get camerax() {
-      return this._camerax;
-    }
-    get cameray() {
-      return this._cameray;
-    }
-    get width() {
-      return this._width;
-    }
-    get height() {
-      return this._height;
-    }
-  };
-
-  // src/ts/util/position.ts
-  var Position = class {
-    constructor(x, y) {
-      this._x = x;
-      this._y = y;
-    }
-    static add(a, b) {
-      return new Position(a.x + b.x, a.y + b.y);
-    }
-    static mul(a, b) {
-      return new Position(a.x * b.x, a.y * b.y);
-    }
-    static from(position) {
-      return new Position(position.x, position.y);
-    }
-    equals(position) {
-      if (this._x === position.x && this._y === position.y)
-        return true;
-      return false;
-    }
-    get x() {
-      return this._x;
-    }
-    get y() {
-      return this._y;
-    }
-  };
-
-  // src/ts/action/action.ts
-  var ActionResult = class {
-    constructor(performed, moved, altAction, altScreen) {
-      this._performed = performed;
-      this._moved = moved;
-      this._altAction = altAction;
-      this._altScreen = altScreen;
-    }
-    get performed() {
-      return this._performed;
-    }
-    get moved() {
-      return this._moved;
-    }
-    get altAction() {
-      return this._altAction;
-    }
-    get altScreen() {
-      return this._altScreen;
-    }
-  };
-  var Action = class {
-  };
-
-  // src/ts/action/walk_action.ts
-  var WalkAction = class extends Action {
-    constructor(position) {
-      super();
-      this.position = Position.from(position);
-    }
-    perform(owner) {
-      let targetPosition = Position.add(this.position, owner.position);
-      if (game.config.noCollision) {
-        owner.position = Position.from(targetPosition);
-        return new ActionResult(true, true, null, null);
-      }
-      if (game.currentLevel.blocksLOS(targetPosition)) {
-        return new ActionResult(false, true, null, null);
-      }
-      const levelActors = game.currentLevel.actors;
-      for (const actor of levelActors) {
-        if (actor.blocks && owner.position.equals(targetPosition)) {
-          if (!owner.isPlayer && !actor.isPlayer) {
-            break;
-          }
-          return new ActionResult(true, true, null, null);
-        }
-      }
-      owner.position = Position.from(targetPosition);
-      return new ActionResult(true, true, null, null);
-    }
-  };
-
-  // src/ts/action/rest_action.ts
-  var RestAction = class extends Action {
-    perform(owner) {
-      return new ActionResult(true, false, null, null);
-    }
-  };
-
-  // src/ts/screen/play_screen.ts
-  var PlayScreen = class {
-    constructor(width, height) {
-      this.camera = new Camera(width, height);
-    }
-    render(position) {
-      this.camera.moveCamera(position.x, position.y);
-      this.drawMap();
-      this.drawCorpses();
-      this.drawActors();
-      game.terminal.render();
-    }
-    drawMap() {
-      for (let i = 0; i < this.camera.width; ++i) {
-        for (let j = 0; j < this.camera.height; ++j) {
-          let x = this.camera.camerax + i;
-          let y = this.camera.cameray + j;
-          let position = new Position(x, y);
-          if (game.config.noFov) {
-            game.terminal.putChar(game.currentLevel.getChar(position), i, j);
-            continue;
-          }
-          if (game.currentLevel.isInFov(position)) {
-            game.terminal.putChar(game.currentLevel.getChar(position), i, j);
-          } else if (game.currentLevel.isExplored(position)) {
-            game.terminal.putChar(Tile.FOG.glyph, i, j);
-          } else {
-            game.terminal.putChar(Tile.FOG.glyph, i, j);
-          }
-        }
-      }
-    }
-    drawCorpses() {
-    }
-    drawActors() {
-      const levelActors = game.currentLevel.actors;
-      for (const actor of levelActors) {
-        const point = this.camera.toCameraCoordinates(actor.position.x, actor.position.y);
-        if (game.config.noFov && point.inBounds) {
-          game.terminal.putChar(actor.glyph, point._x, point._y);
-          continue;
-        }
-        if (game.currentLevel.isInFov(actor.position)) {
-          if (point.inBounds) {
-            game.terminal.putChar(actor.glyph, point._x, point._y);
-          } else {
-            game.terminal.putChar(Tile.FOG.glyph, point._x, point._y);
-          }
-        }
-      }
-    }
-    getKeyAction(inputKey2) {
-      if (inputKey2 === InputKey.NO_INPUT) {
-        return null;
-      }
-      if (inputKey2 === InputKey.MN) {
-        return new WalkAction(new Position(0, -1));
-      }
-      if (inputKey2 === InputKey.MS) {
-        return new WalkAction(new Position(0, 1));
-      }
-      if (inputKey2 === InputKey.MW) {
-        return new WalkAction(new Position(-1, 0));
-      }
-      if (inputKey2 === InputKey.ME) {
-        return new WalkAction(new Position(1, 0));
-      }
-      if (inputKey2 === InputKey.MNE) {
-        return new WalkAction(new Position(1, -1));
-      }
-      if (inputKey2 === InputKey.MNW) {
-        return new WalkAction(new Position(-1, -1));
-      }
-      if (inputKey2 === InputKey.MSE) {
-        return new WalkAction(new Position(1, 1));
-      }
-      if (inputKey2 === InputKey.MSW) {
-        return new WalkAction(new Position(-1, 1));
-      }
-      if (inputKey2 === InputKey.SKIP) {
-        return new RestAction();
-      }
-      return null;
-    }
-  };
-
-  // src/ts/level/fov.ts
+  // src/ts/engine/level/fov.ts
   function computeFov(level, position, range, fov) {
     switch (fov) {
       case 0 /* RecursiveShadowcasting */:
@@ -534,7 +237,66 @@
     return tile.x >= row.depth * row.startSlope && tile.x <= row.depth * row.endSlope;
   }
 
-  // src/ts/level/level.ts
+  // src/ts/engine/render/glyph.ts
+  var Glyph = class {
+    constructor(glyph, fcolor, bcolor) {
+      if (typeof glyph === "string") {
+        glyph = glyph.charCodeAt(0);
+      }
+      ;
+      this._glyph = glyph;
+      this._fcolor = fcolor;
+      this._bcolor = bcolor;
+    }
+    get fcol() {
+      return this._fcolor;
+    }
+    get bcol() {
+      return this._bcolor;
+    }
+    get char() {
+      return this._glyph;
+    }
+  };
+
+  // src/ts/engine/level/tile.ts
+  var _Tile = class {
+    constructor(glyph, blocks) {
+      this._explored = false;
+      this._glyph = glyph;
+      this._tintedGlyph = new Glyph(this._glyph.char, Color.makeDarker(this._glyph.fcol, 0.5), this._glyph.bcol);
+      this._blocks = blocks;
+    }
+    get glyph() {
+      return this._glyph;
+    }
+    get tintedGlyph() {
+      return this._tintedGlyph;
+    }
+    get blocks() {
+      return this._blocks;
+    }
+    get explored() {
+      return this._explored;
+    }
+    set explored(explored) {
+      this._explored = explored;
+    }
+  };
+  var Tile = _Tile;
+  Tile.GRASS = new _Tile(new Glyph(".", Color.green, Color.black), false);
+  Tile.WALL = new _Tile(new Glyph("#", Color.grey, Color.black), true);
+  // dont delete
+  Tile.FOG = new _Tile(new Glyph("#", Color.black, Color.black), false);
+  Tile.BOUND = new _Tile(new Glyph("X", Color.red, Color.black), true);
+  Tile.FLOOR = new _Tile(new Glyph(".", Color.grey, Color.black), false);
+  Tile.DOOR = new _Tile(new Glyph("+", Color.amber, Color.black), false);
+  Tile.OPEN_DOOR = new _Tile(new Glyph("/", Color.amber, Color.black), false);
+  Tile.TEST_DOOR = new _Tile(new Glyph("#", new Color(150, 80, 0), Color.black), true);
+  Tile.TEST_WALL = new _Tile(new Glyph("#", new Color(0, 120, 0), Color.black), true);
+  Tile.TEST_FLOOR = new _Tile(new Glyph("#", Color.darkestGrey, Color.black), false);
+
+  // src/ts/engine/level/level.ts
   var Level = class {
     constructor(width, height, tiles, actors) {
       this._tiles = [];
@@ -636,7 +398,7 @@
     }
   };
 
-  // src/ts/util/rng.ts
+  // src/ts/engine/utils/rng.ts
   var Rng = class {
     static randomInt(max, min = 0) {
       if (min == 0)
@@ -649,7 +411,7 @@
     }
   };
 
-  // src/ts/level/generation/features.ts
+  // src/ts/engine/level/generation/features.ts
   var _Direction = class {
     constructor(x, y) {
       this.x = x;
@@ -1015,8 +777,8 @@
     }
   };
 
-  // src/ts/level/map_builder.ts
-  var MapBuilder = class {
+  // src/ts/engine/level/level_builder.ts
+  var LevelBuilder = class {
     constructor(width, height, depth) {
       this.tiles = [];
       this.actors = [];
@@ -1065,59 +827,191 @@
     }
   };
 
-  // src/ts/actor/actor.ts
-  var Actor = class {
-    constructor(x, y, glyph) {
-      this._position = new Position(x, y);
-      this._glyph = glyph;
-      this._blocks = true;
-      this._hp = 0;
+  // src/ts/engine/render/terminal.ts
+  var Terminal = class {
+    constructor(width, height, tilesetUrl, stepx, stepy) {
+      this.cachedFonts = /* @__PURE__ */ new Map();
+      this.glyphs = [];
+      this.changedGlyphs = [];
+      this.width = width;
+      this.height = height;
+      this.stepx = stepx;
+      this.stepy = stepy;
+      this.widthPixels = width * stepx;
+      this.heightPixels = height * stepy;
+      this.canvas = document.createElement("canvas");
+      this.canvas.width = this.widthPixels;
+      this.canvas.height = this.heightPixels;
+      document.body.appendChild(this.canvas);
+      this.ctx = this.canvas.getContext("2d", { alpha: false, willReadFrequently: true });
+      this.ctx.imageSmoothingEnabled = false;
+      this.imgLoaded = new CustomEvent("imgLoaded");
+      this.tileset = new Image();
+      this.tileset.onload = () => this.tilesetLoaded();
+      this.tileset.src = tilesetUrl;
     }
-    get position() {
-      return this._position;
+    makeColoredCanvas(fontColor) {
+      let canvas = document.createElement("canvas");
+      canvas.width = this.widthPixels;
+      canvas.height = this.heightPixels;
+      let ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(this.tileset, 0, 0);
+      ctx.globalCompositeOperation = "source-atop";
+      ctx.fillStyle = "rgb(" + fontColor.r + ", " + fontColor.g + ", " + fontColor.b + ")";
+      ctx.fillRect(0, 0, this.stepx * 16, this.stepy * 16);
+      return canvas;
     }
-    get glyph() {
-      return this._glyph;
+    tilesetLoaded() {
+      Color.colors.forEach((color) => {
+        this.cachedFonts.set(color, this.makeColoredCanvas(color));
+      });
+      document.dispatchEvent(this.imgLoaded);
     }
-    get blocks() {
-      return this._blocks;
+    //fills the terminal with black color 
+    clear() {
+      this.ctx.fillStyle = "#000000";
+      this.ctx.fillRect(0, 0, this.widthPixels, this.heightPixels);
     }
-    get hp() {
-      return this._hp;
+    // writes one glyph to [x, y]
+    putChar(glyph, x, y) {
+      if (x < 0 || x > this.width)
+        throw new RangeError(`x:${x} must be within range [0,${this.width}]`);
+      if (y < 0 || y > this.height)
+        throw new RangeError(`y:${y} must be within range [0,${this.height}]`);
+      this.changedGlyphs[x + y * this.width] = glyph;
     }
-    set position(pos) {
-      this._position = pos;
-    }
-    set glyph(glyph) {
-      this._glyph = glyph;
-    }
-    set blocks(blocks) {
-      this._blocks = blocks;
-    }
-    set hp(hp) {
-      this._hp = hp;
+    /** @todo */
+    // public write(str: string, x: number, y: number, fcol: Color, bcol: Color) {
+    // 	if (x + str.length > this.width) throw new RangeError(`x+string.lenght:${y} must be less than ${this.height}]`);
+    // 	if (x < 0 || x >= this.width) throw new RangeError(`x:${x} must be within range [0,${this.width}]`);
+    // 	if (y < 0 || y >= this.height) throw new RangeError(`y:${y} must be within range [0,${this.height}]`);
+    // 	for (let i: number = 0; i < str.length; i++) {
+    // 		this.putChar(str.charAt(i), x + i, y);
+    // 	}
+    // };
+    // Renders only modified glyphs since the last call. 
+    render() {
+      for (let x = 0; x < this.width; ++x) {
+        for (let y = 0; y < this.height; ++y) {
+          let glyph = this.changedGlyphs[x + y * this.width];
+          if (glyph === null || glyph === void 0)
+            continue;
+          if (this.changedGlyphs[x + y * this.width] == this.glyphs[x + y * this.width])
+            continue;
+          let char = glyph.char;
+          let sx = Math.floor(char % this.stepx) * this.stepx;
+          let sy = Math.floor(char / this.stepx) * this.stepy;
+          this.ctx.fillStyle = "rgb(" + glyph.bcol.r + ", " + glyph.bcol.g + ", " + glyph.bcol.b + ")";
+          this.ctx.fillRect(x * this.stepx, y * this.stepy, this.stepx, this.stepy);
+          let color = this.cachedFonts.get(glyph.fcol);
+          if (color === void 0) {
+            throw new TypeError(`${glyph.fcol} is undefined`);
+          }
+          this.ctx.drawImage(color, sx, sy, this.stepx, this.stepy, x * this.stepx, y * this.stepy, this.stepx, this.stepy);
+          this.glyphs[x + y * this.width] = glyph;
+          this.changedGlyphs[x + y * this.width] = null;
+        }
+      }
     }
   };
 
-  // src/ts/actor/hero/hero.ts
-  var Hero = class extends Actor {
-    constructor(x, y, glyph) {
-      super(x, y, glyph);
-      this.hp = 30;
+  // src/ts/engine/screen/camera.ts
+  var Camera = class {
+    constructor(width, height) {
+      this._camerax = 1;
+      this._cameray = 1;
+      this._width = width;
+      this._height = height;
+      this._camerax = 1;
+      this._cameray = 1;
     }
-    isPlayer() {
+    moveCamera(targetx, targety, game2) {
+      let x = targetx - this._width / 2;
+      let y = targety - this._height / 2;
+      if (x == this._camerax && y == this._cameray) {
+        return;
+      }
+      if (x < 0)
+        x = 0;
+      if (y < 0)
+        y = 0;
+      if (x > game2.currentLevel.width - this._width)
+        x = game2.currentLevel.width - this._width;
+      if (y > game2.currentLevel.height - this._height)
+        y = game2.currentLevel.height - this._height;
+      this._camerax = x;
+      this._cameray = y;
+    }
+    toCameraCoordinates(x, y) {
+      let newx = x - this._camerax;
+      let newy = y - this._cameray;
+      if (newx < 0 || newy < 0 || newx >= this._width || newy >= this._height)
+        return { _x: x, _y: y, inBounds: false };
+      x = newx;
+      y = newy;
+      return { _x: x, _y: y, inBounds: true };
+    }
+    isInsideViewport(x, y) {
+      if (x < 1 || y < 1 || x >= this._width + 1 || y >= this._height + 1)
+        return false;
       return true;
     }
+    getGlobalCoordinates(x, y) {
+      if (x < 1 || y < 1 || x >= this._width + 1 || y >= this._height + 1)
+        return { x, y, inBounds: false };
+      x += this._camerax;
+      y += this._cameray;
+      return { _x: x, _y: y, inBounds: true };
+    }
+    get camerax() {
+      return this._camerax;
+    }
+    get cameray() {
+      return this._cameray;
+    }
+    get width() {
+      return this._width;
+    }
+    get height() {
+      return this._height;
+    }
   };
 
-  // src/ts/config.ts
-  var Config = class {
+  // src/ts/engine/core/game.ts
+  var lastRender;
+  var Game = class {
     constructor() {
-      this._noFov = true;
-      this._noCollision = true;
-      this._sightRadius = 8;
-      this._screenWidth = 100;
-      this._screenHeight = 100;
+      this.loop = (timestamp) => {
+        this.update();
+        Game.inputKey = "NoInput" /* NO_INPUT */;
+        lastRender = timestamp;
+        window.requestAnimationFrame(this.loop);
+      };
+      document.addEventListener("imgLoaded", this.initGame.bind(this));
+      Game.inputKey = "NoInput" /* NO_INPUT */;
+      lastRender = 0;
+    }
+    // sync image src load 
+    initGame(e) {
+      document.removeEventListener("imgLoaded", this.initGame);
+      document.addEventListener("keydown", this.kbInput, false);
+      window.requestAnimationFrame(this.loop);
+    }
+    // user input
+    kbInput(e) {
+      e.preventDefault();
+      Game.inputKey = e.key;
+    }
+  };
+
+  // src/ts/engine/core/config.ts
+  var Config = class {
+    constructor(_noFov = true, _noCollision = true, _sightRadius = 8, _screenWidth = 100, _screenHeight = 100) {
+      this._noFov = _noFov;
+      this._noCollision = _noCollision;
+      this._sightRadius = _sightRadius;
+      this._screenWidth = _screenWidth;
+      this._screenHeight = _screenHeight;
     }
     get noFov() {
       return this._noFov;
@@ -1150,52 +1044,198 @@
       this._screenHeight = value;
     }
   };
-
-  // src/ts/main.ts
-  var InputKey = {
-    NO_INPUT: "",
-    MN: "(0,-1)",
-    MS: "(0,1)",
-    MW: "(-1,0)",
-    ME: "(1,0)",
-    MNE: "(1,-1)",
-    MNW: "(-1,-1)",
-    MSE: "(1,1)",
-    MSW: "(-1,1)",
-    SKIP: "skip",
-    PICKUP: "pickup"
-  };
-  var inputKey = InputKey.NO_INPUT;
-  var Game = class {
+  var ConfigBuilder = class {
     constructor() {
-      this.loop = (timestamp) => {
-        this.update();
-        this.lastRender = timestamp;
-        window.requestAnimationFrame(this.loop);
-      };
-      this.config = new Config();
-      this.lastRender = 0;
-      this.currentLevel = new MapBuilder(100, 100, 1).makeMap();
+      this._noFov = true;
+      this._noCollision = true;
+      this._sightRadius = 8;
+      this._screenWidth = 100;
+      this._screenHeight = 100;
+    }
+    noFov(value) {
+      this._noFov = value;
+      return this;
+    }
+    noCollision(value) {
+      this._noCollision = value;
+      return this;
+    }
+    sightRadius(value) {
+      this._sightRadius = value;
+      return this;
+    }
+    screenWidth(value) {
+      this._screenWidth = value;
+      return this;
+    }
+    screenHeight(value) {
+      this._screenHeight = value;
+      return this;
+    }
+    build() {
+      return new Config(
+        this._noFov,
+        this._noCollision,
+        this._sightRadius,
+        this._screenWidth,
+        this._screenHeight
+      );
+    }
+  };
+
+  // src/ts/game/hero/hero.ts
+  var Hero = class extends Actor {
+    constructor(x, y, glyph) {
+      super(x, y, glyph);
+      this.hp = 30;
+    }
+    isPlayer() {
+      return true;
+    }
+  };
+
+  // src/ts/game/action/rest_action.ts
+  var RestAction = class extends Action {
+    perform(owner, game2) {
+      return new ActionResult(true, false, null, null);
+    }
+  };
+
+  // src/ts/game/action/walk_action.ts
+  var WalkAction = class extends Action {
+    constructor(position) {
+      super();
+      this.position = Position.from(position);
+    }
+    perform(owner, game2) {
+      let targetPosition = Position.add(this.position, owner.position);
+      if (game2.config.noCollision) {
+        owner.position = Position.from(targetPosition);
+        return new ActionResult(true, true, null, null);
+      }
+      if (game2.currentLevel.blocksLOS(targetPosition)) {
+        return new ActionResult(false, true, null, null);
+      }
+      const levelActors = game2.currentLevel.actors;
+      for (const actor of levelActors) {
+        if (actor.blocks && owner.position.equals(targetPosition)) {
+          if (!owner.isPlayer && !actor.isPlayer) {
+            break;
+          }
+          return new ActionResult(true, true, null, null);
+        }
+      }
+      owner.position = Position.from(targetPosition);
+      return new ActionResult(true, true, null, null);
+    }
+  };
+
+  // src/ts/game/screen/play_screen.ts
+  var PlayScreen = class {
+    constructor(width, height) {
+      this.camera = new Camera(width, height);
+    }
+    render(game2, position) {
+      this.camera.moveCamera(position.x, position.y, game2);
+      this.drawMap(game2);
+      this.drawCorpses(game2);
+      this.drawActors(game2);
+      game2.terminal.render();
+    }
+    drawMap(game2) {
+      for (let i = 0; i < this.camera.width; ++i) {
+        for (let j = 0; j < this.camera.height; ++j) {
+          let x = this.camera.camerax + i;
+          let y = this.camera.cameray + j;
+          let position = new Position(x, y);
+          if (game2.config.noFov) {
+            game2.terminal.putChar(game2.currentLevel.getChar(position), i, j);
+            continue;
+          }
+          if (game2.currentLevel.isInFov(position)) {
+            game2.terminal.putChar(game2.currentLevel.getChar(position), i, j);
+          } else if (game2.currentLevel.isExplored(position)) {
+            game2.terminal.putChar(Tile.FOG.glyph, i, j);
+          } else {
+            game2.terminal.putChar(Tile.FOG.glyph, i, j);
+          }
+        }
+      }
+    }
+    drawCorpses(game2) {
+    }
+    drawActors(game2) {
+      const levelActors = game2.currentLevel.actors;
+      for (const actor of levelActors) {
+        const point = this.camera.toCameraCoordinates(actor.position.x, actor.position.y);
+        if (game2.config.noFov && point.inBounds) {
+          game2.terminal.putChar(actor.glyph, point._x, point._y);
+          continue;
+        }
+        if (game2.currentLevel.isInFov(actor.position)) {
+          if (point.inBounds) {
+            game2.terminal.putChar(actor.glyph, point._x, point._y);
+          } else {
+            game2.terminal.putChar(Tile.FOG.glyph, point._x, point._y);
+          }
+        }
+      }
+    }
+    getKeyAction(inputKey) {
+      switch (inputKey) {
+        case "w" /* W */:
+        case "ArrowUp" /* ARROW_UP */:
+          return new WalkAction(new Position(0, -1));
+        case "s" /* S */:
+        case "ArrowDown" /* ARROW_DOWN */:
+          return new WalkAction(new Position(0, 1));
+        case "a" /* A */:
+        case "ArrowLeft" /* ARROW_LEFT */:
+          return new WalkAction(new Position(-1, 0));
+        case "d" /* D */:
+        case "ArrowRight" /* ARROW_RIGHT */:
+          return new WalkAction(new Position(1, 0));
+        case "e" /* E */:
+        case "PageUp" /* PAGE_UP */:
+          return new WalkAction(new Position(1, -1));
+        case "q" /* Q */:
+        case "Home" /* HOME */:
+          return new WalkAction(new Position(-1, -1));
+        case "c" /* C */:
+        case "PageDown" /* PAGE_DOWN */:
+          return new WalkAction(new Position(1, 1));
+        case "z" /* Z */:
+        case "End" /* END */:
+          return new WalkAction(new Position(-1, 1));
+        case "Space" /* SPACE */:
+          return new RestAction();
+        case "NoInput" /* NO_INPUT */:
+          return null;
+        default:
+          return null;
+      }
+    }
+  };
+
+  // src/ts/game/main.ts
+  var MyGame = class extends Game {
+    constructor() {
+      super();
+      this.config = new ConfigBuilder().noFov(true).build();
+      this.currentLevel = new LevelBuilder(100, 100, 1).makeMap();
       this.player = new Hero(25, 25, new Glyph("@", Color.white, Color.black));
-      this.currentScreen = new PlayScreen(this.config.screenWidth, this.config.screenHeight);
       this.currentLevel.addActor(this.player);
       this.currentLevel.computeFov(this.player.position, this.config.sightRadius, 0 /* RecursiveShadowcasting */);
+      this.currentScreen = new PlayScreen(this.config.screenWidth, this.config.screenHeight);
       this.terminal = new Terminal(this.config.screenWidth, this.config.screenHeight, "data/cp437_16x16_test.png", 16, 16);
-      document.addEventListener("imgLoaded", this.initGame.bind(this));
-    }
-    // sync image src load 
-    initGame(e) {
-      document.removeEventListener("imgLoaded", this.initGame);
-      document.addEventListener("keydown", kbInput, false);
-      window.requestAnimationFrame(this.loop);
     }
     update() {
-      let action = this.currentScreen.getKeyAction(inputKey);
+      let action = this.currentScreen.getKeyAction(Game.inputKey);
       if (action) {
-        let result = action.perform(this.player);
+        let result = action.perform(this.player, this);
         while (result.altAction) {
           action = result.altAction;
-          result = action.perform(this.player);
+          result = action.perform(this.player, this);
         }
         if (result.altAction) {
         }
@@ -1205,61 +1245,8 @@
         if (result.performed) {
         }
       }
-      inputKey = InputKey.NO_INPUT;
-      this.currentScreen.render(this.player.position);
+      this.currentScreen.render(this, this.player.position);
     }
   };
-  var game = new Game();
-  function kbInput(e) {
-    switch (e.key) {
-      case "ArrowUp":
-      case "w":
-        e.preventDefault();
-        inputKey = InputKey.MN;
-        break;
-      case "ArrowDown":
-      case "s":
-        e.preventDefault();
-        inputKey = InputKey.MS;
-        break;
-      case "ArrowLeft":
-      case "a":
-        e.preventDefault();
-        inputKey = InputKey.MW;
-        break;
-      case "ArrowRight":
-      case "d":
-        e.preventDefault();
-        inputKey = InputKey.ME;
-        break;
-      case "Home":
-      case "q":
-        e.preventDefault();
-        inputKey = InputKey.MNW;
-        break;
-      case "PageUp":
-      case "e":
-        e.preventDefault();
-        inputKey = InputKey.MNE;
-        break;
-      case "End":
-      case "z":
-        e.preventDefault();
-        inputKey = InputKey.MSW;
-        break;
-      case "PageDown":
-      case "c":
-        e.preventDefault();
-        inputKey = InputKey.MSE;
-        break;
-      case " ":
-        e.preventDefault();
-        if (e.code == "Space" || e.keyCode == 32) {
-          inputKey = InputKey.SKIP;
-        }
-        break;
-      default:
-        break;
-    }
-  }
+  var game = new MyGame();
 })();

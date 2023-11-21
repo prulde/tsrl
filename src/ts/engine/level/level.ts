@@ -1,4 +1,5 @@
 import { Actor } from "../actor/actor";
+import { config } from "../engine";
 import { Color } from "../render/color";
 import { Glyph } from "../render/glyph";
 import { Position } from "../utils/position";
@@ -34,9 +35,9 @@ class Level implements FovLevel {
 		return this._tiles[position.x + position.y * this.width].explored;
 	}
 
-	public computeFov(position: Position, range: number, fov: Fov): void {
+	public computeFov(position: Position, fov: Fov): void {
 		this._inFov = [];
-		computeFov(this, position, range, fov);
+		computeFov(this, position, config.sightRadius + 1, fov);
 	}
 
 	// fov map

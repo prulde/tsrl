@@ -1,12 +1,12 @@
-import { GameScreen, Camera, Game, Position, Tile, Actor, Action, InputKey } from "../../engine/engine";
-import RestAction from "../action/rest_action";
-import WalkAction from "../action/walk_action";
+import { GameScreen, Camera, Game, Position, Tile, Actor, Action, InputKey, config } from "../../engine/engine";
+import { RestAction } from "../action/rest_action";
+import { WalkAction } from "../action/walk_action";
 
-export default class PlayScreen implements GameScreen {
+export class PlayScreen implements GameScreen {
 	private camera: Camera;
 
-	constructor(width: number, height: number) {
-		this.camera = new Camera(width, height);
+	constructor() {
+		this.camera = new Camera();
 	}
 
 	public render(game: Game, position: Position): void {
@@ -26,7 +26,7 @@ export default class PlayScreen implements GameScreen {
 				let y: number = this.camera.cameray + j;
 				let position = new Position(x, y);
 
-				if (game.config.noFov) {
+				if (config.noFov) {
 					game.terminal.putChar(game.currentLevel.getChar(position), i, j);
 					continue;
 				}
@@ -54,7 +54,7 @@ export default class PlayScreen implements GameScreen {
 		for (const actor of levelActors) {
 			const point = this.camera.toCameraCoordinates(actor.position.x, actor.position.y);
 
-			if (game.config.noFov && point.inBounds) {
+			if (config.noFov && point.inBounds) {
 				game.terminal.putChar(actor.glyph, point._x, point._y);
 				continue;
 			}

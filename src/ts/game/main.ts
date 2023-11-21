@@ -1,9 +1,8 @@
-import { Game, Config, Terminal, Actor, GameScreen, Level, Glyph, Color, Fov, LevelBuilder, Action, ActionResult, ConfigBuilder } from "../engine/engine";
-import Hero from "./hero/hero";
-import PlayScreen from "./screen/play_screen";
+import { Game, Terminal, Actor, GameScreen, Level, Glyph, Color, Fov, LevelBuilder, Action, ActionResult, ConfigBuilder, config, Position } from "../engine/engine";
+import { Hero } from "./hero/hero";
+import { PlayScreen } from "./screen/play_screen";
 
 class MyGame extends Game {
-	public config: Config;
 	public terminal: Terminal;
 	public player: Actor;
 	public currentScreen: GameScreen;
@@ -12,19 +11,24 @@ class MyGame extends Game {
 	constructor() {
 		super();
 
-		this.config = new ConfigBuilder()
+		new ConfigBuilder()
 			.noFov(true)
+			.noCollision(true)
+			.tilesetPath("data/cp437_16x16_test.png")
+			.stepXstepY(16, 16)
+			.screenWidth(100)
+			.screenHeight(100)
+			.sightRadius(8)
 			.build();
 
 		this.currentLevel = new LevelBuilder(100, 100, 1).makeMap();
 		this.player = new Hero(25, 25, new Glyph("@", Color.white, Color.black));
 
 		this.currentLevel.addActor(this.player);
-		this.currentLevel.computeFov(this.player.position, this.config.sightRadius, Fov.RecursiveShadowcasting);
+		this.currentLevel.computeFov(this.player.position, Fov.RecursiveShadowcasting);
 
-		// camera and terminal sizes must be equal
-		this.currentScreen = new PlayScreen(this.config.screenWidth, this.config.screenHeight);
-		this.terminal = new Terminal(this.config.screenWidth, this.config.screenHeight, "data/cp437_16x16_test.png", 16, 16);
+		this.currentScreen = new PlayScreen();
+		this.terminal = new Terminal(config.screenWidth, config.screenHeight, "data/cp437_16x16_test.png", 16, 16);
 	}
 
 	protected update(): void {
@@ -39,7 +43,7 @@ class MyGame extends Game {
 
 			}
 			if (result.moved) {
-				this.currentLevel.computeFov(this.player.position, this.config.sightRadius, Fov.RecursiveShadowcasting);
+				this.currentLevel.computeFov(this.player.position, Fov.RecursiveShadowcasting);
 				//this.currentScreen.moveCamera(this.player.x, this.player.y);
 			}
 			if (result.performed) {
@@ -51,6 +55,5 @@ class MyGame extends Game {
 	}
 }
 
+// entrypoint
 let game: Game = new MyGame();
-
-export { game };

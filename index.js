@@ -320,9 +320,9 @@
       }
       return this._tiles[position.x + position.y * this.width].explored;
     }
-    computeFov(position, fov) {
+    computeFov(position, sightRadius, fov) {
       this._inFov = [];
-      computeFov(this, position, config.sightRadius + 1, fov);
+      computeFov(this, position, sightRadius + 1, fov);
     }
     // fov map
     blocksLOS(position) {
@@ -1004,10 +1004,9 @@
 
   // src/ts/engine/core/config.ts
   var Config = class {
-    constructor(_noFov, _noCollision, _sightRadius, _screenWidth, _screenHeight, _tilesetPath, _stepx, _stepy) {
+    constructor(_noFov, _noCollision, _screenWidth, _screenHeight, _tilesetPath, _stepx, _stepy) {
       this._noFov = _noFov;
       this._noCollision = _noCollision;
-      this._sightRadius = _sightRadius;
       this._screenWidth = _screenWidth;
       this._screenHeight = _screenHeight;
       this._tilesetPath = _tilesetPath;
@@ -1019,9 +1018,6 @@
     }
     get noCollision() {
       return this._noCollision;
-    }
-    get sightRadius() {
-      return this._sightRadius;
     }
     get screenWidth() {
       return this._screenWidth;
@@ -1044,9 +1040,6 @@
     set noCollision(value) {
       this._noCollision = value;
     }
-    set sightRadius(value) {
-      this._sightRadius = value;
-    }
     set screenWidth(value) {
       this._screenWidth = value;
     }
@@ -1059,7 +1052,6 @@
     constructor() {
       this._noFov = false;
       this._noCollision = false;
-      this._sightRadius = 8;
       this._screenWidth = 100;
       this._screenHeight = 100;
     }
@@ -1069,10 +1061,6 @@
     }
     noCollision(value) {
       this._noCollision = value;
-      return this;
-    }
-    sightRadius(value) {
-      this._sightRadius = value;
       return this;
     }
     screenWidth(value) {
@@ -1107,7 +1095,6 @@
       config = new Config(
         this._noFov,
         this._noCollision,
-        this._sightRadius,
         this._screenWidth,
         this._screenHeight,
         this._tilesetPath,
@@ -1255,11 +1242,11 @@
   var MyGame = class extends Game {
     constructor() {
       super();
-      new ConfigBuilder().noFov(true).noCollision(true).tilesetPath("data/cp437_16x16_test.png").stepXstepY(16, 16).screenWidth(100).screenHeight(100).sightRadius(8).build();
+      new ConfigBuilder().noFov(true).noCollision(true).tilesetPath("data/cp437_16x16_test.png").stepXstepY(16, 16).screenWidth(100).screenHeight(100).build();
       this.currentLevel = new LevelBuilder(100, 100, 1).makeMap();
       this.player = new Hero(25, 25, new Glyph("@", Color.white, Color.black));
       this.currentLevel.addActor(this.player);
-      this.currentLevel.computeFov(this.player.position, 0 /* RecursiveShadowcasting */);
+      this.currentLevel.computeFov(this.player.position, 8, 0 /* RecursiveShadowcasting */);
       this.currentScreen = new PlayScreen();
       this.terminal = new Terminal(config.screenWidth, config.screenHeight, "data/cp437_16x16_test.png", 16, 16);
     }
@@ -1274,7 +1261,7 @@
         if (result.altAction) {
         }
         if (result.moved) {
-          this.currentLevel.computeFov(this.player.position, 0 /* RecursiveShadowcasting */);
+          this.currentLevel.computeFov(this.player.position, 8, 0 /* RecursiveShadowcasting */);
         }
         if (result.performed) {
         }

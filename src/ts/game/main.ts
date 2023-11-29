@@ -18,14 +18,13 @@ class MyGame extends Game {
 			.stepXstepY(16, 16)
 			.screenWidth(100)
 			.screenHeight(100)
-			.sightRadius(8)
 			.build();
 
 		this.currentLevel = new LevelBuilder(100, 100, 1).makeMap();
 		this.player = new Hero(25, 25, new Glyph("@", Color.white, Color.black));
 
 		this.currentLevel.addActor(this.player);
-		this.currentLevel.computeFov(this.player.position, Fov.RecursiveShadowcasting);
+		this.currentLevel.computeFov(this.player.position, 8, Fov.RecursiveShadowcasting);
 
 		this.currentScreen = new PlayScreen();
 		this.terminal = new Terminal(config.screenWidth, config.screenHeight, "data/cp437_16x16_test.png", 16, 16);
@@ -43,7 +42,7 @@ class MyGame extends Game {
 
 			}
 			if (result.moved) {
-				this.currentLevel.computeFov(this.player.position, Fov.RecursiveShadowcasting);
+				this.currentLevel.computeFov(this.player.position, 8, Fov.RecursiveShadowcasting);
 				//this.currentScreen.moveCamera(this.player.x, this.player.y);
 			}
 			if (result.performed) {

@@ -35,9 +35,9 @@ class Level implements FovLevel {
 		return this._tiles[position.x + position.y * this.width].explored;
 	}
 
-	public computeFov(position: Position, fov: Fov): void {
+	public computeFov(position: Position, sightRadius: number, fov: Fov): void {
 		this._inFov = [];
-		computeFov(this, position, config.sightRadius + 1, fov);
+		computeFov(this, position, sightRadius + 1, fov);
 	}
 
 	// fov map

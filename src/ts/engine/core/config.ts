@@ -2,7 +2,6 @@ class Config {
 	constructor(
 		private _noFov: boolean,
 		private _noCollision: boolean,
-		private _sightRadius: number,
 		private _screenWidth: number,
 		private _screenHeight: number,
 		private _tilesetPath: string,
@@ -16,10 +15,6 @@ class Config {
 
 	get noCollision(): boolean {
 		return this._noCollision;
-	}
-
-	get sightRadius(): number {
-		return this._sightRadius;
 	}
 
 	get screenWidth(): number {
@@ -51,10 +46,6 @@ class Config {
 		this._noCollision = value;
 	}
 
-	set sightRadius(value: number) {
-		this._sightRadius = value;
-	}
-
 	set screenWidth(value: number) {
 		this._screenWidth = value;
 	}
@@ -70,7 +61,6 @@ let config: Config;
 class ConfigBuilder {
 	private _noFov: boolean = false;
 	private _noCollision: boolean = false;
-	private _sightRadius: number = 8;
 	private _screenWidth: number = 100;
 	private _screenHeight: number = 100;
 	private _tilesetPath: string;
@@ -84,11 +74,6 @@ class ConfigBuilder {
 
 	public noCollision(value: boolean): this {
 		this._noCollision = value;
-		return this;
-	}
-
-	public sightRadius(value: number): this {
-		this._sightRadius = value;
 		return this;
 	}
 
@@ -130,7 +115,6 @@ class ConfigBuilder {
 		config = new Config(
 			this._noFov,
 			this._noCollision,
-			this._sightRadius,
 			this._screenWidth,
 			this._screenHeight,
 			this._tilesetPath,

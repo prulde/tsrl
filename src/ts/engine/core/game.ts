@@ -1,18 +1,19 @@
 import { Actor } from "../actor/actor";
 import { Level } from "../level/level";
-import { Terminal } from "../render/terminal";
 import { GameScreen } from "../screen/screen";
 import { InputKey } from "./input";
 
 let lastRender: number;
 
 abstract class Game {
-	abstract terminal: Terminal;
 	abstract player: Actor;
 	abstract currentScreen: GameScreen;
 	abstract currentLevel: Level;
 
 	protected static inputKey: string;
+
+	public noFov: boolean = true;
+	public noCollision: boolean = true;
 
 	constructor() {
 		document.addEventListener("imgLoaded", this.initGame.bind(this));

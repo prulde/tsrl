@@ -1,4 +1,4 @@
-import { Action, Position, Actor, ActionResult, Game, config } from "../../engine/engine";
+import { Action, Position, Actor, ActionResult, Game } from "../../engine/engine";
 
 export class WalkAction extends Action {
 	private position: Position;
@@ -12,8 +12,7 @@ export class WalkAction extends Action {
 
 		let targetPosition: Position = Position.add(this.position, owner.position);
 
-		/* debug */
-		if (config.noCollision) {
+		if (game.noCollision) {
 			owner.position = Position.from(targetPosition);
 			return new ActionResult(true, true, null, null);
 		}

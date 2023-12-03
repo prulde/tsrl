@@ -1,5 +1,4 @@
 import { Actor } from "../actor/actor";
-import { config } from "../engine";
 import { Color } from "../render/color";
 import { Glyph } from "../render/glyph";
 import { Position } from "../utils/position";

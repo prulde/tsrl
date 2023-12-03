@@ -850,34 +850,34 @@
       this.tileset.onload = () => this.tilesetLoaded();
       this.tileset.src = tilesetUrl;
     }
-    makeColoredCanvas(fontColor) {
+    getColoredCanvas(fontColor) {
+      let cachedFont = this.cachedFonts.get(fontColor);
+      if (cachedFont !== void 0) {
+        return cachedFont;
+      }
       let canvas = document.createElement("canvas");
-      canvas.width = this.widthPixels;
-      canvas.height = this.heightPixels;
+      canvas.width = this.tileset.width;
+      canvas.height = this.tileset.height;
       let ctx = canvas.getContext("2d", { willReadFrequently: true });
       ctx.drawImage(this.tileset, 0, 0);
       ctx.globalCompositeOperation = "source-atop";
       ctx.fillStyle = "rgb(" + fontColor.r + ", " + fontColor.g + ", " + fontColor.b + ")";
-      ctx.fillRect(0, 0, this.stepx * 16, this.stepy * 16);
+      ctx.fillRect(0, 0, this.tileset.width, this.tileset.height);
+      this.cachedFonts.set(fontColor, canvas);
       return canvas;
     }
     tilesetLoaded() {
-      Color.colors.forEach((color) => {
-        this.cachedFonts.set(color, this.makeColoredCanvas(color));
-      });
       document.dispatchEvent(this.imgLoaded);
     }
-    //fills the terminal with black color 
     clear() {
       this.ctx.fillStyle = "#000000";
       this.ctx.fillRect(0, 0, this.widthPixels, this.heightPixels);
     }
-    // writes one glyph to [x, y]
     putChar(glyph, x, y) {
       if (x < 0 || x > this.width)
-        throw new RangeError(`x:${x} must be within range [0,${this.width}]`);
+        throw new Error(`x:${x} must be within range [0,${this.width}]`);
       if (y < 0 || y > this.height)
-        throw new RangeError(`y:${y} must be within range [0,${this.height}]`);
+        throw new Error(`y:${y} must be within range [0,${this.height}]`);
       this.changedGlyphs[x + y * this.width] = glyph;
     }
     /** @todo */
@@ -903,10 +903,7 @@
           let sy = Math.floor(char / this.stepx) * this.stepy;
           this.ctx.fillStyle = "rgb(" + glyph.bcol.r + ", " + glyph.bcol.g + ", " + glyph.bcol.b + ")";
           this.ctx.fillRect(x * this.stepx, y * this.stepy, this.stepx, this.stepy);
-          let color = this.cachedFonts.get(glyph.fcol);
-          if (color === void 0) {
-            throw new TypeError(`${glyph.fcol} is undefined`);
-          }
+          let color = this.getColoredCanvas(glyph.fcol);
           this.ctx.drawImage(color, sx, sy, this.stepx, this.stepy, x * this.stepx, y * this.stepy, this.stepx, this.stepy);
           this.glyphs[x + y * this.width] = glyph;
           this.changedGlyphs[x + y * this.width] = null;
@@ -915,17 +912,54 @@
     }
   };
 
-  // src/ts/engine/screen/camera.ts
-  var Camera = class {
-    constructor() {
-      this._camerax = 1;
-      this._cameray = 1;
-      this._camerax = 1;
-      this._cameray = 1;
+  // src/ts/engine/screen/viewport.ts
+  var Viewport = class {
+    constructor(x, y, width, height) {
+      this._x = x;
+      this._y = y;
+      this._width = width;
+      this._height = height;
     }
-    moveCamera(targetx, targety, game2) {
-      let x = targetx - config.screenWidth / 2;
-      let y = targety - config.screenHeight / 2;
+    putChar(glyph, x, y) {
+      let position = this.transform(x, y);
+      if (position != null) {
+        Viewport._terminal.putChar(glyph, position.x, position.y);
+        return;
+      }
+    }
+    render() {
+      Viewport._terminal.render();
+    }
+    transform(x, y) {
+      if (x < 0)
+        return null;
+      if (x >= this._width)
+        return null;
+      if (y < 0)
+        return null;
+      if (y >= this._height)
+        return null;
+      return new Position(this._x + x, this._y + y);
+    }
+    static makeTerminal(width, height, tilesetUrl, stepx, stepy) {
+      Viewport._terminal = new Terminal(width, height, tilesetUrl, stepx, stepy);
+    }
+  };
+
+  // src/ts/engine/screen/camera.ts
+  var Camera = class extends Viewport {
+    constructor(x, y, width, height, boundWidth, boundHeigh) {
+      super(x, y, width, height);
+      this._camerax = 1;
+      this._cameray = 1;
+      this._camerax = 1;
+      this._cameray = 1;
+      this._boundWidth = boundWidth;
+      this._boundHeight = boundHeigh;
+    }
+    moveCamera(targetx, targety) {
+      let x = targetx - this._width / 2;
+      let y = targety - this._height / 2;
       if (x == this._camerax && y == this._cameray) {
         return;
       }
@@ -933,29 +967,29 @@
         x = 0;
       if (y < 0)
         y = 0;
-      if (x > game2.currentLevel.width - config.screenWidth)
-        x = game2.currentLevel.width - config.screenWidth;
-      if (y > game2.currentLevel.height - config.screenHeight)
-        y = game2.currentLevel.height - config.screenHeight;
+      if (x > this._boundWidth - this._width)
+        x = this._boundWidth - this._width;
+      if (y > this._boundHeight - this._height)
+        y = this._boundHeight - this._height;
       this._camerax = x;
       this._cameray = y;
     }
     toCameraCoordinates(x, y) {
       let newx = x - this._camerax;
       let newy = y - this._cameray;
-      if (newx < 0 || newy < 0 || newx >= config.screenWidth || newy >= config.screenHeight)
+      if (newx < 0 || newy < 0 || newx >= this._width || newy >= this._height)
         return { _x: x, _y: y, inBounds: false };
       x = newx;
       y = newy;
       return { _x: x, _y: y, inBounds: true };
     }
     isInsideViewport(x, y) {
-      if (x < 1 || y < 1 || x >= config.screenWidth + 1 || y >= config.screenHeight + 1)
+      if (x < 1 || y < 1 || x >= this._width + 1 || y >= this._height + 1)
         return false;
       return true;
     }
     getGlobalCoordinates(x, y) {
-      if (x < 1 || y < 1 || x >= config.screenWidth + 1 || y >= config.screenHeight + 1)
+      if (x < 1 || y < 1 || x >= this._width + 1 || y >= this._height + 1)
         return { x, y, inBounds: false };
       x += this._camerax;
       y += this._cameray;
@@ -968,10 +1002,10 @@
       return this._cameray;
     }
     get width() {
-      return config.screenWidth;
+      return this._width;
     }
     get height() {
-      return config.screenHeight;
+      return this._height;
     }
   };
 
@@ -979,6 +1013,8 @@
   var lastRender;
   var Game = class {
     constructor() {
+      this.noFov = true;
+      this.noCollision = true;
       this.loop = (timestamp) => {
         this.update();
         Game.inputKey = "NoInput" /* NO_INPUT */;
@@ -999,108 +1035,6 @@
     kbInput(e) {
       e.preventDefault();
       Game.inputKey = e.key;
-    }
-  };
-
-  // src/ts/engine/core/config.ts
-  var Config = class {
-    constructor(_noFov, _noCollision, _screenWidth, _screenHeight, _tilesetPath, _stepx, _stepy) {
-      this._noFov = _noFov;
-      this._noCollision = _noCollision;
-      this._screenWidth = _screenWidth;
-      this._screenHeight = _screenHeight;
-      this._tilesetPath = _tilesetPath;
-      this._stepx = _stepx;
-      this._stepy = _stepy;
-    }
-    get noFov() {
-      return this._noFov;
-    }
-    get noCollision() {
-      return this._noCollision;
-    }
-    get screenWidth() {
-      return this._screenWidth;
-    }
-    get screenHeight() {
-      return this._screenHeight;
-    }
-    get tilesetPath() {
-      return this._tilesetPath;
-    }
-    get stepx() {
-      return this._stepx;
-    }
-    get stepy() {
-      return this._stepy;
-    }
-    set noFov(value) {
-      this._noFov = value;
-    }
-    set noCollision(value) {
-      this._noCollision = value;
-    }
-    set screenWidth(value) {
-      this._screenWidth = value;
-    }
-    set screenHeight(value) {
-      this._screenHeight = value;
-    }
-  };
-  var config;
-  var ConfigBuilder = class {
-    constructor() {
-      this._noFov = false;
-      this._noCollision = false;
-      this._screenWidth = 100;
-      this._screenHeight = 100;
-    }
-    noFov(value) {
-      this._noFov = value;
-      return this;
-    }
-    noCollision(value) {
-      this._noCollision = value;
-      return this;
-    }
-    screenWidth(value) {
-      this._screenWidth = value;
-      return this;
-    }
-    screenHeight(value) {
-      this._screenHeight = value;
-      return this;
-    }
-    tilesetPath(value) {
-      this._tilesetPath = value;
-      return this;
-    }
-    stepXstepY(x, y) {
-      this._stepx = x;
-      this._stepy = y;
-      return this;
-    }
-    validate() {
-      if (this._tilesetPath === void 0)
-        throw new Error("tilesetPath must be defined");
-      if (this._stepx === void 0 || this._stepy === void 0)
-        throw new Error("stepX and stepY must be defined");
-      if (this._noFov)
-        console.log("noFov: true");
-      if (this._noCollision)
-        console.log("noCollision: true");
-    }
-    build() {
-      this.validate();
-      config = new Config(
-        this._noFov,
-        this._noCollision,
-        this._screenWidth,
-        this._screenHeight,
-        this._tilesetPath,
-        this._stepx,
-        this._stepy
-      );
     }
   };
 
@@ -1130,7 +1064,7 @@
     }
     perform(owner, game2) {
       let targetPosition = Position.add(this.position, owner.position);
-      if (config.noCollision) {
+      if (game2.noCollision) {
         owner.position = Position.from(targetPosition);
         return new ActionResult(true, true, null, null);
       }
@@ -1153,32 +1087,32 @@
 
   // src/ts/game/screen/play_screen.ts
   var PlayScreen = class {
-    constructor() {
-      this.camera = new Camera();
+    constructor(x, y, width, height, boundWidth, boundHeigh) {
+      this._cameraViewport = new Camera(x, y, width, height, boundWidth, boundHeigh);
     }
     render(game2, position) {
-      this.camera.moveCamera(position.x, position.y, game2);
+      this._cameraViewport.moveCamera(position.x, position.y);
       this.drawMap(game2);
       this.drawCorpses(game2);
       this.drawActors(game2);
-      game2.terminal.render();
+      this._cameraViewport.render();
     }
     drawMap(game2) {
-      for (let i = 0; i < this.camera.width; ++i) {
-        for (let j = 0; j < this.camera.height; ++j) {
-          let x = this.camera.camerax + i;
-          let y = this.camera.cameray + j;
+      for (let i = 0; i < this._cameraViewport.width; ++i) {
+        for (let j = 0; j < this._cameraViewport.height; ++j) {
+          let x = this._cameraViewport.camerax + i;
+          let y = this._cameraViewport.cameray + j;
           let position = new Position(x, y);
-          if (config.noFov) {
-            game2.terminal.putChar(game2.currentLevel.getChar(position), i, j);
+          if (game2.noFov) {
+            this._cameraViewport.putChar(game2.currentLevel.getChar(position), i, j);
             continue;
           }
           if (game2.currentLevel.isInFov(position)) {
-            game2.terminal.putChar(game2.currentLevel.getChar(position), i, j);
+            this._cameraViewport.putChar(game2.currentLevel.getChar(position), i, j);
           } else if (game2.currentLevel.isExplored(position)) {
-            game2.terminal.putChar(Tile.FOG.glyph, i, j);
+            this._cameraViewport.putChar(Tile.FOG.glyph, i, j);
           } else {
-            game2.terminal.putChar(Tile.FOG.glyph, i, j);
+            this._cameraViewport.putChar(Tile.FOG.glyph, i, j);
           }
         }
       }
@@ -1188,16 +1122,16 @@
     drawActors(game2) {
       const levelActors = game2.currentLevel.actors;
       for (const actor of levelActors) {
-        const point = this.camera.toCameraCoordinates(actor.position.x, actor.position.y);
-        if (config.noFov && point.inBounds) {
-          game2.terminal.putChar(actor.glyph, point._x, point._y);
+        const point = this._cameraViewport.toCameraCoordinates(actor.position.x, actor.position.y);
+        if (game2.noFov && point.inBounds) {
+          this._cameraViewport.putChar(actor.glyph, point._x, point._y);
           continue;
         }
         if (game2.currentLevel.isInFov(actor.position)) {
           if (point.inBounds) {
-            game2.terminal.putChar(actor.glyph, point._x, point._y);
+            this._cameraViewport.putChar(actor.glyph, point._x, point._y);
           } else {
-            game2.terminal.putChar(Tile.FOG.glyph, point._x, point._y);
+            this._cameraViewport.putChar(Tile.FOG.glyph, point._x, point._y);
           }
         }
       }
@@ -1242,13 +1176,12 @@
   var MyGame = class extends Game {
     constructor() {
       super();
-      new ConfigBuilder().noFov(true).noCollision(true).tilesetPath("data/cp437_16x16_test.png").stepXstepY(16, 16).screenWidth(100).screenHeight(100).build();
+      Viewport.makeTerminal(100, 100, "data/cp437_16x16_test.png", 16, 16);
       this.currentLevel = new LevelBuilder(100, 100, 1).makeMap();
       this.player = new Hero(25, 25, new Glyph("@", Color.white, Color.black));
       this.currentLevel.addActor(this.player);
       this.currentLevel.computeFov(this.player.position, 8, 0 /* RecursiveShadowcasting */);
-      this.currentScreen = new PlayScreen();
-      this.terminal = new Terminal(config.screenWidth, config.screenHeight, "data/cp437_16x16_test.png", 16, 16);
+      this.currentScreen = new PlayScreen(6, 6, 50, 50, this.currentLevel.width, this.currentLevel.height);
     }
     update() {
       let action = this.currentScreen.getKeyAction(Game.inputKey);
@@ -1257,8 +1190,6 @@
         while (result.altAction) {
           action = result.altAction;
           result = action.perform(this.player, this);
-        }
-        if (result.altAction) {
         }
         if (result.moved) {
           this.currentLevel.computeFov(this.player.position, 8, 0 /* RecursiveShadowcasting */);

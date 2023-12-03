@@ -1,45 +1,45 @@
-import { GameScreen, Camera, Game, Position, Tile, Actor, Action, InputKey, config } from "../../engine/engine";
+import { GameScreen, Camera, Game, Position, Tile, Actor, Action, InputKey } from "../../engine/engine";
 import { RestAction } from "../action/rest_action";
 import { WalkAction } from "../action/walk_action";
 
-export class PlayScreen implements GameScreen {
-	private camera: Camera;
+class PlayScreen implements GameScreen {
+	private _cameraViewport: Camera;
 
-	constructor() {
-		this.camera = new Camera();
+	constructor(x: number, y: number, width: number, height: number, boundWidth: number, boundHeigh: number) {
+		this._cameraViewport = new Camera(x, y, width, height, boundWidth, boundHeigh);
 	}
 
 	public render(game: Game, position: Position): void {
-		this.camera.moveCamera(position.x, position.y, game);
+		this._cameraViewport.moveCamera(position.x, position.y);
 
 		this.drawMap(game);
 		this.drawCorpses(game);
 		this.drawActors(game);
 
-		game.terminal.render();
+		this._cameraViewport.render();
 	}
 
 	private drawMap(game: Game): void {
-		for (let i: number = 0; i < this.camera.width; ++i) {
-			for (let j: number = 0; j < this.camera.height; ++j) {
-				let x: number = this.camera.camerax + i;
-				let y: number = this.camera.cameray + j;
+		for (let i: number = 0; i < this._cameraViewport.width; ++i) {
+			for (let j: number = 0; j < this._cameraViewport.height; ++j) {
+				let x: number = this._cameraViewport.camerax + i;
+				let y: number = this._cameraViewport.cameray + j;
 				let position = new Position(x, y);
 
-				if (config.noFov) {
-					game.terminal.putChar(game.currentLevel.getChar(position), i, j);
+				if (game.noFov) {
+					this._cameraViewport.putChar(game.currentLevel.getChar(position), i, j);
 					continue;
 				}
 
 				if (game.currentLevel.isInFov(position)) {
-					game.terminal.putChar(game.currentLevel.getChar(position), i, j);
+					this._cameraViewport.putChar(game.currentLevel.getChar(position), i, j);
 				}
 				else if (game.currentLevel.isExplored(position)) {
-					game.terminal.putChar(Tile.FOG.glyph, i, j);
+					this._cameraViewport.putChar(Tile.FOG.glyph, i, j);
 				}
 				// because i dont use clear() for render
 				else {
-					game.terminal.putChar(Tile.FOG.glyph, i, j);
+					this._cameraViewport.putChar(Tile.FOG.glyph, i, j);
 				}
 			}
 		}
@@ -52,10 +52,10 @@ export class PlayScreen implements GameScreen {
 	private drawActors(game: Game): void {
 		const levelActors: Actor[] = game.currentLevel.actors;
 		for (const actor of levelActors) {
-			const point = this.camera.toCameraCoordinates(actor.position.x, actor.position.y);
+			const point = this._cameraViewport.toCameraCoordinates(actor.position.x, actor.position.y);
 
-			if (config.noFov && point.inBounds) {
-				game.terminal.putChar(actor.glyph, point._x, point._y);
+			if (game.noFov && point.inBounds) {
+				this._cameraViewport.putChar(actor.glyph, point._x, point._y);
 				continue;
 			}
 
@@ -64,9 +64,9 @@ export class PlayScreen implements GameScreen {
 
 
 				if (point.inBounds) {
-					game.terminal.putChar(actor.glyph, point._x, point._y);
+					this._cameraViewport.putChar(actor.glyph, point._x, point._y);
 				} else {
-					game.terminal.putChar(Tile.FOG.glyph, point._x, point._y);
+					this._cameraViewport.putChar(Tile.FOG.glyph, point._x, point._y);
 				}
 			}
 
@@ -108,3 +108,5 @@ export class PlayScreen implements GameScreen {
 		}
 	}
 }
+
+export { PlayScreen };

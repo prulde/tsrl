@@ -46,40 +46,44 @@ class Terminal {
 		this.tileset.src = tilesetUrl;
 	}
 
-	private makeColoredCanvas(fontColor: Color): HTMLCanvasElement {
+	private getColoredCanvas(fontColor: Color): HTMLCanvasElement {
+		let cachedFont: HTMLCanvasElement | undefined = this.cachedFonts.get(fontColor);
+		if (cachedFont !== undefined) {
+			return cachedFont;
+		}
+
 		let canvas: HTMLCanvasElement = document.createElement("canvas");
-		canvas.width = this.widthPixels;
-		canvas.height = this.heightPixels;
+		canvas.width = this.tileset.width;
+		canvas.height = this.tileset.height;
 		let ctx: CanvasRenderingContext2D | null = canvas.getContext("2d", { willReadFrequently: true });
 		ctx!.drawImage(this.tileset, 0, 0);
 
 		ctx!.globalCompositeOperation = "source-atop";
 		ctx!.fillStyle = "rgb(" + fontColor.r + ", " + fontColor.g + ", " + fontColor.b + ")";
-		ctx!.fillRect(0, 0, this.stepx * 16, this.stepy * 16);
+		ctx!.fillRect(0, 0, this.tileset.width, this.tileset.height);
 
+		this.cachedFonts.set(fontColor, canvas);
 		return canvas;
 	}
 
 	private tilesetLoaded(): void {
 		// initialize cached colors
-		Color.colors.forEach((color: Color): void => {
-			this.cachedFonts.set(color, this.makeColoredCanvas(color));
-		});
+		// Color.colors.forEach((color: Color): void => {
+		// 	this.cachedFonts.set(color, this.makeColoredCanvas(color));
+		// });
 
 		// trigger event
 		document.dispatchEvent(this.imgLoaded);
 	}
 
-	//fills the terminal with black color 
 	public clear(): void {
 		this.ctx!.fillStyle = "#000000";
 		this.ctx!.fillRect(0, 0, this.widthPixels, this.heightPixels);
 	}
 
-	// writes one glyph to [x, y]
 	public putChar(glyph: Glyph, x: number, y: number): void {
-		if (x < 0 || x > this.width) throw new RangeError(`x:${x} must be within range [0,${this.width}]`);
-		if (y < 0 || y > this.height) throw new RangeError(`y:${y} must be within range [0,${this.height}]`);
+		if (x < 0 || x > this.width) throw new Error(`x:${x} must be within range [0,${this.width}]`);
+		if (y < 0 || y > this.height) throw new Error(`y:${y} must be within range [0,${this.height}]`);
 
 		this.changedGlyphs[x + y * this.width] = glyph;
 	}
@@ -112,10 +116,7 @@ class Terminal {
 				this.ctx!.fillStyle = "rgb(" + glyph.bcol.r + ", " + glyph.bcol.g + ", " + glyph.bcol.b + ")";
 				this.ctx!.fillRect(x * this.stepx, y * this.stepy, this.stepx, this.stepy);
 
-				let color: HTMLCanvasElement | undefined = this.cachedFonts.get(glyph.fcol);
-				if (color === undefined) {
-					throw new TypeError(`${glyph.fcol} is undefined`);
-				}
+				let color: HTMLCanvasElement = this.getColoredCanvas(glyph.fcol);//this.cachedFonts.get(glyph.fcol);
 
 				//tilesetx,tilesety, stepx,stepy, destinationx,destinationy,scalex,scaley
 				this.ctx!.drawImage(color!, sx, sy, this.stepx, this.stepy, x * this.stepx, y * this.stepy, this.stepx, this.stepy);

@@ -1,9 +1,8 @@
-import { Game, Terminal, Actor, GameScreen, Level, Glyph, Color, Fov, LevelBuilder, Action, ActionResult, ConfigBuilder, config, Position } from "../engine/engine";
+import { Game, Actor, GameScreen, Level, Glyph, Color, Fov, LevelBuilder, Action, ActionResult, Viewport } from "../engine/engine";
 import { Hero } from "./hero/hero";
 import { PlayScreen } from "./screen/play_screen";
 
 class MyGame extends Game {
-	public terminal: Terminal;
 	public player: Actor;
 	public currentScreen: GameScreen;
 	public currentLevel: Level;
@@ -11,14 +10,7 @@ class MyGame extends Game {
 	constructor() {
 		super();
 
-		new ConfigBuilder()
-			.noFov(true)
-			.noCollision(true)
-			.tilesetPath("data/cp437_16x16_test.png")
-			.stepXstepY(16, 16)
-			.screenWidth(100)
-			.screenHeight(100)
-			.build();
+		Viewport.makeTerminal(100, 100, "data/cp437_16x16_test.png", 16, 16);
 
 		this.currentLevel = new LevelBuilder(100, 100, 1).makeMap();
 		this.player = new Hero(25, 25, new Glyph("@", Color.white, Color.black));
@@ -26,8 +18,7 @@ class MyGame extends Game {
 		this.currentLevel.addActor(this.player);
 		this.currentLevel.computeFov(this.player.position, 8, Fov.RecursiveShadowcasting);
 
-		this.currentScreen = new PlayScreen();
-		this.terminal = new Terminal(config.screenWidth, config.screenHeight, "data/cp437_16x16_test.png", 16, 16);
+		this.currentScreen = new PlayScreen(6, 6, 50, 50, this.currentLevel.width, this.currentLevel.height);
 	}
 
 	protected update(): void {
@@ -37,9 +28,6 @@ class MyGame extends Game {
 			while (result.altAction) {
 				action = result.altAction;
 				result = action.perform(this.player, this);
-			}
-			if (result.altAction) {
-
 			}
 			if (result.moved) {
 				this.currentLevel.computeFov(this.player.position, 8, Fov.RecursiveShadowcasting);

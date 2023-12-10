@@ -1,4 +1,5 @@
-import { Action, Position, Actor, ActionResult, Game } from "../../engine/engine";
+import { Action, Position, Actor, ActionResult, Level } from "../../engine/engine";
+import { DebugSettings } from "../main";
 
 export class WalkAction extends Action {
 	private position: Position;
@@ -8,20 +9,20 @@ export class WalkAction extends Action {
 		this.position = Position.from(position);
 	}
 
-	public override perform(owner: Actor, game: Game): ActionResult {
+	public override perform(owner: Actor, currentLevel: Level): ActionResult {
 
 		let targetPosition: Position = Position.add(this.position, owner.position);
 
-		if (game.noCollision) {
+		if (DebugSettings.noCollision) {
 			owner.position = Position.from(targetPosition);
 			return new ActionResult(true, true, null, null);
 		}
 
-		if (game.currentLevel.blocksLOS(targetPosition)) {
+		if (currentLevel.blocks(targetPosition)) {
 			return new ActionResult(false, true, null, null);
 		}
 
-		const levelActors: Actor[] = game.currentLevel.actors;
+		const levelActors: Actor[] = currentLevel.actors;
 		for (const actor of levelActors) {
 			if (actor.blocks && owner.position.equals(targetPosition)) {
 				if (!owner.isPlayer && !actor.isPlayer) {

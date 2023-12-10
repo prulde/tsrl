@@ -33,7 +33,7 @@ class ActionResult {
 }
 
 abstract class Action {
-	public abstract perform(actor: Actor, game: Game): ActionResult;
+	public abstract perform(actor: Actor, ...opt: any): ActionResult;
 }
 
 export { Action, ActionResult };

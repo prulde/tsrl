@@ -1,18 +1,26 @@
 import { Game, Actor, GameScreen, Level, Glyph, Color, Fov, LevelBuilder, Action, ActionResult, Viewport } from "../engine/engine";
 import { Hero } from "./hero/hero";
+import { LevelManager } from "./level_manager";
 import { PlayScreen } from "./screen/play_screen";
 
+class DebugSettings {
+	public static noFov: boolean = true;
+	public static noCollision: boolean = true;
+}
+
 class MyGame extends Game {
-	public player: Actor;
-	public currentScreen: GameScreen;
-	public currentLevel: Level;
+	private levelManager: LevelManager;
+	private player: Actor;
+	private currentScreen: GameScreen;
+	private currentLevel: Level;
 
 	constructor() {
 		super();
 
 		Viewport.makeTerminal(100, 100, "data/cp437_16x16_test.png", 16, 16);
+		this.levelManager = new LevelManager();
 
-		this.currentLevel = new LevelBuilder(100, 100, 1).makeMap();
+		this.currentLevel = this.levelManager.makeLevel("test", 100, 100, 1);
 		this.player = new Hero(25, 25, new Glyph("@", Color.white, Color.black));
 
 		this.currentLevel.addActor(this.player);
@@ -24,7 +32,7 @@ class MyGame extends Game {
 	protected update(): void {
 		let action: Action | null = this.currentScreen.getKeyAction(Game.inputKey);
 		if (action) {
-			let result: ActionResult = action.perform(this.player, this);
+			let result: ActionResult = action.perform(this.player, this.currentLevel);
 			while (result.altAction) {
 				action = result.altAction;
 				result = action.perform(this.player, this);
@@ -38,9 +46,11 @@ class MyGame extends Game {
 			}
 		}
 
-		this.currentScreen.render(this, this.player.position);
+		this.currentScreen.render(this.currentLevel, this.player.position);
 	}
 }
 
 // entrypoint
 let game: Game = new MyGame();
+
+export { DebugSettings };

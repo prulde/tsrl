@@ -40,7 +40,7 @@ class Level implements FovLevel {
 	}
 
 	// fov map
-	public blocksLOS(position: Position): boolean {
+	public blocks(position: Position): boolean {
 		if (this.isInsideMap(position) && this._tiles[position.x + position.y * this._width].blocks) { // Tile.BOUNDS
 			return true;
 		}

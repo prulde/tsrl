@@ -20,7 +20,7 @@ class LevelBuilder {
 		this.depth = depth;
 	}
 
-	public makeMap(): Level {
+	public makeLevel(): Level {
 		//this.populate(0.05, Tile.WALL);
 		//this.initWithTiles(Tile.WALL);
 		//let catacombs: RoomAddition = new RoomAddition(this.width, this.height, this.tiles, this.depth);

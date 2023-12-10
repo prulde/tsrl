@@ -1,7 +1,7 @@
 import { Position } from "../utils/position";
 
 interface FovLevel {
-	blocksLOS(position: Position): boolean;
+	blocks(position: Position): boolean;
 	reveal(position: Position): boolean;
 }
 
@@ -95,14 +95,14 @@ function scan(row: Row, q: Quadrant, level: FovLevel, range: number, radius: num
 			return;
 		}
 
-		let currentTileBlocked: boolean = level.blocksLOS(q.transform(tile));
+		let currentTileBlocked: boolean = level.blocks(q.transform(tile));
 
 		if (currentTileBlocked || isSymmetric(row, tile)) {
 			level.reveal(q.transform(tile));
 		}
 
 		if (prevTile) {
-			let prevTileBlocked: boolean = level.blocksLOS(q.transform(prevTile));
+			let prevTileBlocked: boolean = level.blocks(q.transform(prevTile));
 
 			if (prevTileBlocked && !currentTileBlocked) {
 				row.startSlope = slope(tile, q);
@@ -117,7 +117,7 @@ function scan(row: Row, q: Quadrant, level: FovLevel, range: number, radius: num
 	});
 
 	if (prevTile) {
-		let prevTileBlocked: boolean = level.blocksLOS(q.transform(prevTile));
+		let prevTileBlocked: boolean = level.blocks(q.transform(prevTile));
 		if (!prevTileBlocked) {
 			scan(row.nextRow(), q, level, range, radius);
 		}

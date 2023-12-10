@@ -1,6 +1,7 @@
-import { GameScreen, Camera, Game, Position, Tile, Actor, Action, InputKey } from "../../engine/engine";
+import { GameScreen, Camera, Position, Tile, Actor, Action, InputKey, Level } from "../../engine/engine";
 import { RestAction } from "../action/rest_action";
 import { WalkAction } from "../action/walk_action";
+import { DebugSettings } from "../main";
 
 class PlayScreen implements GameScreen {
 	private _cameraViewport: Camera;
@@ -9,32 +10,32 @@ class PlayScreen implements GameScreen {
 		this._cameraViewport = new Camera(x, y, width, height, boundWidth, boundHeigh);
 	}
 
-	public render(game: Game, position: Position): void {
+	public render(currentLevel: Level, position: Position): void {
 		this._cameraViewport.moveCamera(position.x, position.y);
 
-		this.drawMap(game);
-		this.drawCorpses(game);
-		this.drawActors(game);
+		this.drawMap(currentLevel);
+		this.drawCorpses(currentLevel);
+		this.drawActors(currentLevel);
 
 		this._cameraViewport.render();
 	}
 
-	private drawMap(game: Game): void {
+	private drawMap(currentLevel: Level): void {
 		for (let i: number = 0; i < this._cameraViewport.width; ++i) {
 			for (let j: number = 0; j < this._cameraViewport.height; ++j) {
 				let x: number = this._cameraViewport.camerax + i;
 				let y: number = this._cameraViewport.cameray + j;
 				let position = new Position(x, y);
 
-				if (game.noFov) {
-					this._cameraViewport.putChar(game.currentLevel.getChar(position), i, j);
+				if (DebugSettings.noFov) {
+					this._cameraViewport.putChar(currentLevel.getChar(position), i, j);
 					continue;
 				}
 
-				if (game.currentLevel.isInFov(position)) {
-					this._cameraViewport.putChar(game.currentLevel.getChar(position), i, j);
+				if (currentLevel.isInFov(position)) {
+					this._cameraViewport.putChar(currentLevel.getChar(position), i, j);
 				}
-				else if (game.currentLevel.isExplored(position)) {
+				else if (currentLevel.isExplored(position)) {
 					this._cameraViewport.putChar(Tile.FOG.glyph, i, j);
 				}
 				// because i dont use clear() for render
@@ -45,23 +46,21 @@ class PlayScreen implements GameScreen {
 		}
 	}
 
-	private drawCorpses(game: Game): void {
+	private drawCorpses(currentLevel: Level): void {
 
 	}
 
-	private drawActors(game: Game): void {
-		const levelActors: Actor[] = game.currentLevel.actors;
+	private drawActors(currentLevel: Level): void {
+		const levelActors: Actor[] = currentLevel.actors;
 		for (const actor of levelActors) {
 			const point = this._cameraViewport.toCameraCoordinates(actor.position.x, actor.position.y);
 
-			if (game.noFov && point.inBounds) {
+			if (DebugSettings.noFov && point.inBounds) {
 				this._cameraViewport.putChar(actor.glyph, point._x, point._y);
 				continue;
 			}
 
-
-			if (game.currentLevel.isInFov(actor.position)) {
-
+			if (currentLevel.isInFov(actor.position)) {
 
 				if (point.inBounds) {
 					this._cameraViewport.putChar(actor.glyph, point._x, point._y);

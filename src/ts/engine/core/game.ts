@@ -1,23 +1,14 @@
-import { Actor } from "../actor/actor";
-import { Level } from "../level/level";
-import { GameScreen } from "../screen/screen";
 import { InputKey } from "./input";
 
 let lastRender: number;
 
 abstract class Game {
-	abstract player: Actor;
-	abstract currentScreen: GameScreen;
-	abstract currentLevel: Level;
-
 	protected static inputKey: string;
 
-	public noFov: boolean = true;
-	public noCollision: boolean = true;
-
 	constructor() {
-		document.addEventListener("imgLoaded", this.initGame.bind(this));
 		Game.inputKey = InputKey.NO_INPUT;
+
+		document.addEventListener("imgLoaded", this.initGame.bind(this));
 		lastRender = 0;
 	}
 
